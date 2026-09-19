@@ -6,9 +6,12 @@ src/ - 前端运行时（Application: Camera/World/UI/Shaders/Utils）
 bundler/ - Webpack 开发/生产配置
 server/ - 生产静态托管与 /api/send-email
 static/ - 模型、贴图、音频、图标等构建期拷贝资源
+.agents/ - Amp Orb 初始化与唤醒生命周期脚本
 </directory>
 <config>
-package.json - 运行时与构建依赖；审计修复走直接升级 + uuid/@types/node overrides，禁止 npm audit fix --force
+package.json / bun.lock - Bun 版本与运行时/构建依赖；审计修复走直接升级 + uuid/@types/node/@types/minimatch overrides，禁止 npm audit fix --force
+.agents/setup - 为新 Orb 安装固定版本 Bun、Mintlify CLI 与冻结依赖
+.agents/resume - Orb 唤醒时的快速恢复检查（当前无持久服务）
 bundler/webpack.dev.js - 开发服务器；本机 IP 用 os.networkInterfaces，不用 ip 包
 server/index.ts - SMTP 联系表单，nodemailer 关闭 file/url 访问
 src/tsconfig.json - skipLibCheck；@types/node 钉在 18.x，避免 TS 4.6 解析 Node 26 类型
