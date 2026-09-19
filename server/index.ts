@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 express 静态托管 public，依赖 nodemailer SMTP 投递联系表单
+ * [OUTPUT]: 对外提供 /api/send-email 与 8080 上的生产静态服务
+ * [POS]: server 的唯一入口，构建产物由 webpack.prod.js 写入 public
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -32,6 +38,8 @@ app.post('/api/send-email', (req, res) => {
             user: process.env.FOLIO_EMAIL,
             pass: process.env.FOLIO_PASSWORD,
         },
+        disableFileAccess: true,
+        disableUrlAccess: true,
     });
 
     transporter
