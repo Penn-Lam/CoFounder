@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 copy-webpack-plugin / html-webpack-plugin / mini-css-extract-plugin 与 ts-loader/babel-loader
+ * [OUTPUT]: 对外提供共享 Webpack 配置：入口 src/script.ts，输出 public，拷贝 static
+ * [POS]: bundler 的公共底盘，被 webpack.dev.js 与 webpack.prod.js merge
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCSSExtractPlugin = require('mini-css-extract-plugin');
