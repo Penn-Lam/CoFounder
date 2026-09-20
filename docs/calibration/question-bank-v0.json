@@ -1,0 +1,627 @@
+{
+  "question_set_version": "cofounder-calibration-v0",
+  "status": "calibration-draft",
+  "locale": "zh-CN",
+  "dimensions": [
+    "ambition",
+    "risk",
+    "money",
+    "product",
+    "governance",
+    "conflict",
+    "operating",
+    "external"
+  ],
+  "profile": {
+    "relationship_stages": [
+      "equity-discussed",
+      "side-project",
+      "company-registered",
+      "product",
+      "users",
+      "revenue",
+      "funded",
+      "survived-crisis"
+    ],
+    "durations": ["under-3m", "3-12m", "1-3y", "3-5y", "over-5y"],
+    "responsibilities": [
+      "product",
+      "frontend",
+      "backend",
+      "ai-models",
+      "research",
+      "design",
+      "sales",
+      "bd",
+      "customer-delivery",
+      "marketing-pr",
+      "fundraising",
+      "hiring",
+      "finance",
+      "company-management",
+      "strategy",
+      "other"
+    ],
+    "company_authority": ["self", "partner", "shared", "undefined"]
+  },
+  "questions": [
+    {
+      "id": "Q1",
+      "dimension": "ambition",
+      "weight": 1,
+      "prediction_enabled": true,
+      "sensitive": true,
+      "prompt": "公司做两年，一家大公司突然给出足够让你十年不用工作的价格。",
+      "options": [
+        { "id": "A", "text": "卖", "value": 15 },
+        { "id": "B", "text": "看价格", "value": 40 },
+        { "id": "C", "text": "除非公司走不下去，否则不卖", "value": 85 },
+        { "id": "D", "text": "嘴上先说“不忘初心”，晚上回家算一下税后", "value": 55 }
+      ]
+    },
+    {
+      "id": "Q2",
+      "dimension": "ambition",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "你真正想做哪种公司？",
+      "options": [
+        { "id": "A", "text": "10–30 人，小而美，利润很好", "value": 15 },
+        { "id": "B", "text": "一个行业里非常强的产品公司", "value": 45 },
+        { "id": "C", "text": "十亿美元级公司", "value": 75 },
+        { "id": "D", "text": "定义一个新 Category", "value": 100 },
+        { "id": "E", "text": "先有人付钱再说", "value": 30 }
+      ]
+    },
+    {
+      "id": "Q3",
+      "dimension": "ambition",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "五年后公司很赚钱，但没有“改变世界”，你会怎么评价？",
+      "options": [
+        { "id": "A", "text": "非常成功", "value": 15 },
+        { "id": "B", "text": "还不错", "value": 40 },
+        { "id": "C", "text": "会有遗憾", "value": 70 },
+        { "id": "D", "text": "那我会觉得没做到想做的事", "value": 100 }
+      ]
+    },
+    {
+      "id": "Q4",
+      "dimension": "risk",
+      "weight": 1,
+      "prediction_enabled": true,
+      "sensitive": false,
+      "prompt": "账上还有 8 个月钱，突然出现一个窗口，需要扩招 12 人才能抢。",
+      "options": [
+        { "id": "A", "text": "招，现在不冲以后没机会", "value": 100 },
+        { "id": "B", "text": "招一半", "value": 70 },
+        { "id": "C", "text": "先证明需求", "value": 20 },
+        { "id": "D", "text": "JD 先挂，钱融到了再发 Offer", "value": 40 }
+      ]
+    },
+    {
+      "id": "Q5",
+      "dimension": "risk",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "OpenAI 覆盖了你们 60% 的功能。",
+      "options": [
+        { "id": "A", "text": "完了", "value": 20 },
+        { "id": "B", "text": "马上 Pivot", "value": 70 },
+        { "id": "C", "text": "用户问题还在，先看真实影响", "value": 40 },
+        {
+          "id": "D",
+          "text": "当晚发：《为什么 OpenAI 永远做不了我们》",
+          "value": 85,
+          "tags": ["narrative-reflex"]
+        }
+      ]
+    },
+    {
+      "id": "Q6",
+      "dimension": "risk",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "你最不能接受哪一种结果？",
+      "options": [
+        { "id": "A", "text": "错过巨大窗口", "value": 90 },
+        { "id": "B", "text": "公司因为下注太大直接死掉", "value": 20 }
+      ]
+    },
+    {
+      "id": "Q7",
+      "dimension": "money",
+      "weight": 1,
+      "prediction_enabled": true,
+      "sensitive": false,
+      "prompt": "一个大客户愿意付 200 万，但要求你做一个明显会带偏产品的功能。",
+      "options": [
+        { "id": "A", "text": "接，200 万是真的", "value": 15 },
+        { "id": "B", "text": "不接，不能污染产品", "value": 60 },
+        { "id": "C", "text": "单独项目制做", "value": 30 },
+        {
+          "id": "D",
+          "text": "接，而且 BP 写“头部客户已验证”",
+          "value": 90,
+          "tags": ["capital-narrative-reflex"]
+        }
+      ]
+    },
+    {
+      "id": "Q8",
+      "dimension": "money",
+      "weight": 0.5,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "Founder 应该拿多少钱？",
+      "options": [
+        { "id": "A", "text": "最低生活费", "value": 70 },
+        { "id": "B", "text": "市场价打折", "value": 45 },
+        { "id": "C", "text": "谁生活压力大谁合理多拿一点", "value": 20 },
+        { "id": "D", "text": "融完资就正常发，Founder 也不是和尚", "value": 55 }
+      ]
+    },
+    {
+      "id": "Q9",
+      "dimension": "money",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "什么数字最让你安心？",
+      "options": [
+        { "id": "A", "text": "24 个月 Runway", "value": 25 },
+        { "id": "B", "text": "收入持续增长", "value": 10 },
+        { "id": "C", "text": "留存持续增长", "value": 30 },
+        { "id": "D", "text": "下一轮已有三家基金明确 Interest", "value": 95 }
+      ]
+    },
+    {
+      "id": "Q10",
+      "dimension": "product",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "一百个用户都要求同一个功能。",
+      "options": [
+        { "id": "A", "text": "做", "value": 90 },
+        { "id": "B", "text": "不做，Founder 要看到用户没看到的东西", "value": 10 },
+        { "id": "C", "text": "做最小版本验证", "value": 75 },
+        { "id": "D", "text": "先问：这 100 个付钱了吗？", "value": 85 }
+      ]
+    },
+    {
+      "id": "Q11",
+      "dimension": "product",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "发布后媒体刷屏，真实使用率很低。",
+      "options": [
+        { "id": "A", "text": "发布成功", "value": 15 },
+        { "id": "B", "text": "传播成功，产品失败", "value": 95 },
+        { "id": "C", "text": "先看 30 天数据", "value": 80 },
+        { "id": "D", "text": "市场认知本来就是 Product 的一部分", "value": 45 }
+      ]
+    },
+    {
+      "id": "Q12",
+      "dimension": "product",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "你更相信哪句话？",
+      "options": [
+        { "id": "A", "text": "用户不知道自己未来需要什么", "value": 20 },
+        { "id": "B", "text": "Founder 不知道用户今天有多痛", "value": 80 },
+        { "id": "C", "text": "两句话都对，所以要一直打架", "value": 55 },
+        { "id": "D", "text": "数据会告诉我们答案", "value": 75 }
+      ]
+    },
+    {
+      "id": "Q13",
+      "dimension": "governance",
+      "weight": 1,
+      "prediction_enabled": true,
+      "sensitive": false,
+      "prompt": "你们在重大产品方向上完全冲突。",
+      "options": [
+        { "id": "A", "text": "CEO 拍板", "value": 100 },
+        { "id": "B", "text": "专业负责人拍板", "value": 65 },
+        { "id": "C", "text": "继续讨论到一致", "value": 10 },
+        { "id": "D", "text": "找董事会或第三方", "value": 35 },
+        { "id": "E", "text": "做两个小实验", "value": 45 }
+      ]
+    },
+    {
+      "id": "Q14",
+      "dimension": "governance",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "合伙关系应该怎么治理？",
+      "options": [
+        { "id": "A", "text": "必须有明确一号位", "value": 95 },
+        { "id": "B", "text": "分领域一号位", "value": 65 },
+        { "id": "C", "text": "真正好的合伙关系可以 50/50", "value": 10 },
+        { "id": "D", "text": "谁掌握 Context 更多谁拍", "value": 50 }
+      ]
+    },
+    {
+      "id": "Q15",
+      "dimension": "governance",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "合伙人连续做了三个你认为错误的决定。",
+      "options": [
+        { "id": "A", "text": "公司结果还好，那先相信结果", "value": 60 },
+        { "id": "B", "text": "重谈权力边界", "value": 75 },
+        { "id": "C", "text": "再观察", "value": 30 },
+        {
+          "id": "D",
+          "text": "在 Notion 建一个《公司治理结构的几点思考》",
+          "value": 50,
+          "tags": ["latent-conflict"]
+        }
+      ]
+    },
+    {
+      "id": "Q16",
+      "dimension": "conflict",
+      "weight": 1,
+      "prediction_enabled": true,
+      "sensitive": false,
+      "prompt": "你很不爽，多久会告诉 TA？",
+      "options": [
+        { "id": "A", "text": "当场", "value": 100, "latency_days": 0 },
+        { "id": "B", "text": "当天", "value": 80, "latency_days": 0.5 },
+        { "id": "C", "text": "一周内", "value": 50, "latency_days": 4 },
+        { "id": "D", "text": "等合适机会", "value": 25, "latency_days": 14 },
+        { "id": "E", "text": "一般不说", "value": 0, "latency_days": 30 }
+      ]
+    },
+    {
+      "id": "Q17",
+      "dimension": "conflict",
+      "weight": 0,
+      "question_type": "tag-only",
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "你最讨厌哪种冲突？",
+      "options": [
+        { "id": "A", "text": "当团队面反驳我", "tags": ["public-conflict-sensitive"] },
+        { "id": "B", "text": "一直不说，突然爆炸", "tags": ["avoidance-sensitive"] },
+        { "id": "C", "text": "什么都非要讲逻辑", "tags": ["logic-overload-sensitive"] },
+        { "id": "D", "text": "吵完开始冷战", "tags": ["coldwar-sensitive"] },
+        { "id": "E", "text": "找第三个人评理", "tags": ["triangulation-sensitive"] }
+      ]
+    },
+    {
+      "id": "Q18",
+      "dimension": "conflict",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "吵了两小时还没结论。",
+      "options": [
+        { "id": "A", "text": "今天必须聊明白", "value": 95 },
+        { "id": "B", "text": "睡一觉明天说", "value": 55 },
+        { "id": "C", "text": "用数据解决", "value": 50 },
+        { "id": "D", "text": "各自问 GPT，交换答案", "value": 60 },
+        { "id": "E", "text": "先去吃饭，血糖回来再继续", "value": 40 }
+      ]
+    },
+    {
+      "id": "Q19",
+      "dimension": "operating",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "周日 23:47，合伙人突然说：“有个想法，要不今晚改一下？”",
+      "options": [
+        { "id": "A", "text": "来", "value": 100 },
+        { "id": "B", "text": "明早", "value": 20 },
+        { "id": "C", "text": "看是不是 Critical", "value": 55 },
+        { "id": "D", "text": "已读，准备装死", "value": 5 }
+      ]
+    },
+    {
+      "id": "Q20",
+      "dimension": "operating",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "你更接近哪种开发方式？",
+      "options": [
+        { "id": "A", "text": "Vibe Coding，先跑起来", "value": 100 },
+        { "id": "B", "text": "PRD、架构和边界先完整", "value": 10 },
+        { "id": "C", "text": "核心严谨，外围先糊", "value": 65 },
+        { "id": "D", "text": "Founder 不该管这么细", "value": 40 }
+      ]
+    },
+    {
+      "id": "Q21",
+      "dimension": "operating",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "一个重要决定聊了三周还没结果，最可能的问题是？",
+      "options": [
+        { "id": "A", "text": "信息还不够", "value": 20 },
+        { "id": "B", "text": "Owner 不清楚", "value": 50 },
+        { "id": "C", "text": "大家太追求共识", "value": 75 },
+        { "id": "D", "text": "缺一个敢拍板的人", "value": 80 },
+        { "id": "E", "text": "窗口都快过去了，别聊了", "value": 100 }
+      ]
+    },
+    {
+      "id": "Q22",
+      "dimension": "external",
+      "weight": 1,
+      "prediction_enabled": true,
+      "sensitive": false,
+      "prompt": "一个顶级播客只邀请你们中的一个人。",
+      "options": [
+        { "id": "A", "text": "Founder 必须上", "value": 75 },
+        { "id": "B", "text": "谁会讲谁上", "value": 85 },
+        { "id": "C", "text": "谁负责领域谁上", "value": 70 },
+        { "id": "D", "text": "不上，浪费时间", "value": 5 },
+        { "id": "E", "text": "先问投资人看不看", "value": 95, "tags": ["capital-orientation"] }
+      ]
+    },
+    {
+      "id": "Q23",
+      "dimension": "external",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "客户群突然发火。",
+      "options": [
+        { "id": "A", "text": "谁看到谁回", "value": 65 },
+        { "id": "B", "text": "商业负责人回", "value": 75 },
+        { "id": "C", "text": "CEO 回", "value": 85 },
+        { "id": "D", "text": "内部先统一口径", "value": 40 },
+        { "id": "E", "text": "我默认联创会回", "value": 10, "tags": ["responsibility-gap"] }
+      ]
+    },
+    {
+      "id": "Q24",
+      "dimension": "external",
+      "weight": 1,
+      "prediction_enabled": false,
+      "sensitive": false,
+      "prompt": "你最愿意做哪件事？",
+      "options": [
+        { "id": "A", "text": "和用户聊两小时", "value": 55 },
+        { "id": "B", "text": "给投资人讲 BP", "value": 95 },
+        { "id": "C", "text": "上台 Keynote", "value": 100 },
+        { "id": "D", "text": "半夜帮客户救火", "value": 70 },
+        { "id": "E", "text": "把产品做完，一个人都别找我", "value": 5 }
+      ]
+    }
+  ],
+  "mirror_question_ids": ["Q1", "Q4", "Q7", "Q13", "Q16", "Q22"],
+  "mirror_relationships": [
+    {
+      "question_id": "Q1",
+      "near_pairs": [["A", "B"], ["B", "D"], ["C", "D"]],
+      "opposite_pairs": [["A", "C"], ["A", "D"], ["B", "C"]]
+    },
+    {
+      "question_id": "Q4",
+      "near_pairs": [["A", "B"], ["B", "D"], ["C", "D"]],
+      "opposite_pairs": [["A", "C"], ["A", "D"], ["B", "C"]]
+    },
+    {
+      "question_id": "Q7",
+      "near_pairs": [["A", "C"], ["B", "C"], ["B", "D"]],
+      "opposite_pairs": [["A", "B"], ["A", "D"], ["C", "D"]]
+    },
+    {
+      "question_id": "Q13",
+      "near_pairs": [["A", "B"], ["C", "D"], ["C", "E"], ["D", "E"]],
+      "opposite_pairs": [["A", "C"], ["A", "D"], ["A", "E"], ["B", "C"], ["B", "D"], ["B", "E"]]
+    },
+    {
+      "question_id": "Q16",
+      "near_pairs": [["A", "B"], ["B", "C"], ["C", "D"], ["D", "E"]],
+      "opposite_pairs": [["A", "C"], ["A", "D"], ["A", "E"], ["B", "D"], ["B", "E"], ["C", "E"]]
+    },
+    {
+      "question_id": "Q22",
+      "near_pairs": [["A", "B"], ["A", "C"], ["A", "E"], ["B", "C"], ["B", "E"], ["C", "E"]],
+      "opposite_pairs": [["A", "D"], ["B", "D"], ["C", "D"], ["D", "E"]]
+    }
+  ],
+  "sensitive_core_relationships": [
+    {
+      "question_id": "Q1",
+      "topic": "acquisition-intent",
+      "aligned_pairs": [["A", "A"], ["A", "B"], ["A", "D"], ["B", "B"], ["B", "D"], ["C", "C"], ["D", "D"]],
+      "conflict_pairs": [
+        { "options": ["A", "C"], "severity": "critical" },
+        { "options": ["B", "C"], "severity": "high" },
+        { "options": ["C", "D"], "severity": "high" }
+      ],
+      "delete_raw_options_at_pair_completion": true,
+      "exclude_from_public_features": true
+    }
+  ],
+  "red_line_questions": [
+    {
+      "id": "R1",
+      "topic": "equity-adjustment",
+      "sensitive": true,
+      "prompt": "未来贡献严重失衡，接受重新讨论股权吗？",
+      "options": [
+        { "id": "A", "text": "可以" },
+        { "id": "B", "text": "原则上可以" },
+        { "id": "C", "text": "不接受" },
+        { "id": "D", "text": "没聊过", "unresolved": true }
+      ]
+    },
+    {
+      "id": "R2",
+      "topic": "commitment-horizon",
+      "sensitive": true,
+      "prompt": "连续 24 个月没有明显结果，你更接近哪种选择？",
+      "options": [
+        { "id": "A", "text": "继续" },
+        { "id": "B", "text": "看现金" },
+        { "id": "C", "text": "看人生阶段" },
+        { "id": "D", "text": "大概率退出" }
+      ]
+    },
+    {
+      "id": "R3",
+      "topic": "ethics-boundary",
+      "sensitive": true,
+      "prompt": "为了公司活下去，需要做一件合法但你个人很不认同的业务。",
+      "options": [
+        { "id": "A", "text": "接" },
+        { "id": "B", "text": "暂时接" },
+        { "id": "C", "text": "不接" },
+        { "id": "D", "text": "看有多缺钱" }
+      ]
+    },
+    {
+      "id": "R4",
+      "topic": "ceo-removal",
+      "sensitive": true,
+      "prompt": "如果未来事实证明其中一人已经不适合继续做 CEO：",
+      "options": [
+        { "id": "A", "text": "应该换" },
+        { "id": "B", "text": "董事会决定" },
+        { "id": "C", "text": "Founder 不应该被换" },
+        { "id": "D", "text": "从没讨论", "unresolved": true }
+      ]
+    }
+  ],
+  "red_line_relationships": [
+    {
+      "question_id": "R1",
+      "unresolved_options": ["D"],
+      "aligned_pairs": [["A", "A"], ["A", "B"], ["B", "B"], ["C", "C"]],
+      "conflict_pairs": [["A", "C"], ["B", "C"]],
+      "conflict_severity": "high"
+    },
+    {
+      "question_id": "R2",
+      "unresolved_options": [],
+      "aligned_pairs": [["A", "A"], ["A", "B"], ["B", "B"], ["B", "C"], ["C", "C"], ["C", "D"], ["D", "D"]],
+      "conflict_pairs": [["A", "C"], ["A", "D"], ["B", "D"]],
+      "conflict_severity": "high"
+    },
+    {
+      "question_id": "R3",
+      "unresolved_options": [],
+      "aligned_pairs": [["A", "A"], ["A", "B"], ["A", "D"], ["B", "B"], ["B", "D"], ["C", "C"], ["D", "D"]],
+      "conflict_pairs": [["A", "C"], ["B", "C"], ["C", "D"]],
+      "conflict_severity": "critical"
+    },
+    {
+      "question_id": "R4",
+      "unresolved_options": ["D"],
+      "aligned_pairs": [["A", "A"], ["A", "B"], ["B", "B"], ["C", "C"]],
+      "conflict_pairs": [["A", "C"], ["B", "C"]],
+      "conflict_severity": "critical"
+    }
+  ],
+  "public_feature_rules": {
+    "ambition_question_ids": ["Q2", "Q3"],
+    "excluded_sensitive_question_ids": ["Q1"]
+  },
+  "ordinary_conflict_flag_rules": [
+    {
+      "id": "dual-sole-authority",
+      "condition": "authority_agreement == dual_self_claim",
+      "severity": "critical"
+    },
+    {
+      "id": "safe-ambition-gap",
+      "condition": "abs(safe_ambition_a - safe_ambition_b) >= 60",
+      "severity": "high"
+    },
+    {
+      "id": "risk-gap",
+      "condition": "abs(risk_a - risk_b) >= 60",
+      "severity": "high"
+    },
+    {
+      "id": "money-gap",
+      "condition": "abs(money_a - money_b) >= 60",
+      "severity": "high"
+    },
+    {
+      "id": "product-large-structural-difference",
+      "condition": "product_relation == structural_difference && abs(product_a - product_b) > 55",
+      "severity": "high"
+    },
+    {
+      "id": "conflict-latency-gap",
+      "condition": "abs(conflict_latency_days_a - conflict_latency_days_b) >= 14",
+      "severity": "high"
+    },
+    {
+      "id": "operating-gap",
+      "condition": "abs(operating_a - operating_b) >= 70",
+      "severity": "moderate"
+    }
+  ],
+  "excluded_dimension_gap_flags": ["external"],
+  "classification_catalog": {
+    "public_archetypes": [
+      { "id": "vision-reality", "working_label": "愿景 × 现实 / Vision × Reality" },
+      { "id": "dual-big-outcome", "working_label": "双大结果 / Category Builders" },
+      { "id": "dual-product", "working_label": "双产品经理 / Product Twins" },
+      { "id": "cashflow-operators", "working_label": "现金流搭档 / Cashflow Operators" },
+      { "id": "research-lab", "working_label": "研究实验室 / Research Lab" },
+      { "id": "narrative-market-fit", "working_label": "叙事市场匹配 / Narrative-Market Fit" },
+      { "id": "complementary-monsters", "working_label": "互补怪物 / Complementary Monsters" },
+      { "id": "complementary-builders", "working_label": "互补建设者 / Complementary Builders" }
+    ],
+    "private_risk_patterns": [
+      { "id": "dual-leadership", "working_label": "双一号位" },
+      { "id": "quiet-reactive", "working_label": "沉默 × 反应型" },
+      { "id": "high-pressure-pair", "working_label": "高压搭档" },
+      { "id": "world-peace", "working_label": "世界和平型" },
+      { "id": "parallel-solo-founders", "working_label": "Solo Founder × Solo Founder" }
+    ],
+    "conversation_prompt_topics": [
+      "acquisition-threshold",
+      "five-year-definition",
+      "hiring-window",
+      "platform-overlap",
+      "risk-loss-aversion",
+      "customer-customization",
+      "founder-compensation",
+      "cash-at-six-months",
+      "runway-signal",
+      "user-demand",
+      "media-vs-usage",
+      "product-evidence",
+      "decision-deadlock",
+      "company-authority",
+      "authority-model",
+      "repeated-bad-decisions",
+      "conflict-latency",
+      "conflict-style",
+      "unresolved-conflict",
+      "work-boundary",
+      "engineering-rigor",
+      "delayed-decision",
+      "public-representation",
+      "customer-crisis",
+      "external-role",
+      "equity-adjustment",
+      "commitment-horizon",
+      "ethics-boundary",
+      "ceo-removal"
+    ]
+  }
+}

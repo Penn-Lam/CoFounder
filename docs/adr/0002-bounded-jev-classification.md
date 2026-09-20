@@ -1,0 +1,5 @@
+# Use Jev only for bounded, replaceable classification
+
+Generate results through three layers: deterministic Rules produce a de-identified Pair Feature Vector, a pinned Jev model selects bounded typed content identifiers for genuinely fuzzy judgments, and a versioned human-authored Content Library supplies every visible word. Exact arithmetic, thresholding, conflict detection, Mirror Accuracy, and numerical ranking remain in Rules. Jev receives no raw answers or Account data; its model version, decision schema, probabilities, confidence, and output are persisted with the result.
+
+Report generation runs asynchronously through Cloudflare Queue. A classifier interface keeps Jev replaceable, and low confidence, timeout, rate limit, or provider failure produces a complete Conservative Result from deterministic Rules instead of blocking Pair Completion. Confidence thresholds must be calibrated against a labelled evaluation set before launch. This preserves Jev's value for archetype and narrative salience without making an early-access external model a correctness or availability dependency.
