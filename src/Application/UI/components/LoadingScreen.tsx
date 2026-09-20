@@ -258,6 +258,9 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
                             <p>START</p>
                         </div>
                     </div>
+                    <a href="/desktop/" style={styles.skipLink}>
+                        SKIP TO COFOUNDER DIAGNOSTICS
+                    </a>
                 </div>
             </div>
             {webGLError && (
@@ -361,6 +364,13 @@ const styles: StyleSheetCSS = {
         // textDecoration: 'none',
         color: '#4598ff',
         cursor: 'pointer',
+    },
+    skipLink: {
+        alignSelf: 'center',
+        color: '#fff',
+        fontSize: 12,
+        marginTop: 18,
+        textDecoration: 'underline',
     },
     overlayText: {
         width: '100%',

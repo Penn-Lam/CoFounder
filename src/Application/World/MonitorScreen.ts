@@ -148,7 +148,22 @@ export default class MonitorScreen extends EventEmitter {
         iframe.onload = () => {
             if (iframe.contentWindow) {
                 window.addEventListener('message', (event) => {
-                    var evt = new CustomEvent(event.data.type, {
+                    if (
+                        event.origin !== window.location.origin ||
+                        event.source !== iframe.contentWindow ||
+                        !event.data ||
+                        ![
+                            'mousemove',
+                            'mousedown',
+                            'mouseup',
+                            'keydown',
+                            'keyup',
+                        ].includes(event.data.type)
+                    ) {
+                        return;
+                    }
+
+                    const evt = new CustomEvent(event.data.type, {
                         bubbles: true,
                         cancelable: false,
                     });
@@ -183,19 +198,7 @@ export default class MonitorScreen extends EventEmitter {
         };
 
         // Set iframe attributes
-        // PROD
-        iframe.src = 'https://os.henryheffernan.com/';
-        /**
-         * Use dev server is query params are present
-         *
-         * Warning: This will not work unless the dev server is running on localhost:3000
-         * Also running the dev server causes browsers to freak out over unsecure connections
-         * in the iframe, so it will flag a ton of issues.
-         */
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('dev')) {
-            iframe.src = 'http://localhost:3000/';
-        }
+        iframe.src = new URL('/desktop/', window.location.origin).toString();
         iframe.style.width = this.screenSize.width + 'px';
         iframe.style.height = this.screenSize.height + 'px';
         iframe.style.padding = IFRAME_PADDING + 'px';
@@ -204,7 +207,7 @@ export default class MonitorScreen extends EventEmitter {
         iframe.className = 'jitter';
         iframe.id = 'computer-screen';
         iframe.frameBorder = '0';
-        iframe.title = 'HeffernanOS';
+        iframe.title = 'Cofounder Diagnostics';
 
         // Add iframe to container
         container.appendChild(iframe);

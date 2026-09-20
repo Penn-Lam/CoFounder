@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 copy-webpack-plugin / html-webpack-plugin / mini-css-extract-plugin 与 ts-loader/babel-loader
- * [OUTPUT]: 对外提供共享 Webpack 配置：入口 src/script.ts，输出 public，拷贝 static
- * [POS]: bundler 的公共底盘，被 webpack.dev.js 与 webpack.prod.js merge
+ * [OUTPUT]: 对外提供共享 Webpack 配置：构建 3D garage 与 /desktop Diagnostics，输出 public，拷贝静态资源
+ * [POS]: bundler 的公共底盘，由 webpack.prod.js 合并后供 Worker 开发与生产环境使用
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 const CopyWebpackPlugin = require('copy-webpack-plugin');
@@ -10,10 +10,13 @@ const MiniCSSExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
 
 module.exports = {
-    entry: path.resolve(__dirname, '../src/script.ts'),
+    entry: {
+        garage: path.resolve(__dirname, '../src/script.ts'),
+        desktop: path.resolve(__dirname, '../src/Diagnostics/index.tsx'),
+    },
     output: {
         hashFunction: 'xxhash64',
-        filename: 'bundle.[contenthash].js',
+        filename: '[name]/bundle.[contenthash].js',
         path: path.resolve(__dirname, '../public'),
     },
     devtool: 'source-map',
@@ -23,9 +26,19 @@ module.exports = {
         }),
         new HtmlWebpackPlugin({
             template: path.resolve(__dirname, '../src/index.html'),
+            filename: 'index.html',
+            chunks: ['garage'],
             minify: true,
         }),
-        new MiniCSSExtractPlugin(),
+        new HtmlWebpackPlugin({
+            template: path.resolve(__dirname, '../src/Diagnostics/index.html'),
+            filename: 'desktop/index.html',
+            chunks: ['desktop'],
+            minify: true,
+        }),
+        new MiniCSSExtractPlugin({
+            filename: '[name]/style.[contenthash].css',
+        }),
     ],
     resolve: {
         alias: {

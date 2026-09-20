@@ -1,0 +1,18 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    "name": "cofounder",
+    "main": "worker/app.ts",
+    "compatibility_date": "2026-09-20",
+    "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+        "html_handling": "none",
+        "run_worker_first": true,
+    },
+    "r2_buckets": [
+        {
+            "binding": "MEDIA",
+            "bucket_name": "cofounder-media",
+        },
+    ],
+}

@@ -1,0 +1,180 @@
+:root {
+    color: #102a2a;
+    font-family: 'Courier New', 'Microsoft YaHei', monospace;
+    background: #c9c6b8;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#diagnostics {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        linear-gradient(rgba(16, 42, 42, 0.08) 1px, transparent 1px), #c9c6b8;
+    background-size: 100% 4px;
+}
+
+.desktop-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 18px;
+}
+
+.system-bar,
+.window-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    background: #102a2a;
+    color: #f0c84b;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 10px 12px;
+}
+
+.window {
+    width: min(780px, 100%);
+    margin: auto;
+    border: 3px solid #102a2a;
+    box-shadow: 10px 10px 0 rgba(16, 42, 42, 0.22);
+    background: #e8e4d4;
+}
+
+.window-body {
+    padding: clamp(24px, 6vw, 62px);
+}
+
+.eyebrow {
+    color: #7a5a00;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+h1 {
+    max-width: 680px;
+    margin: 18px 0;
+    font-family: Georgia, 'Noto Serif SC', serif;
+    font-size: clamp(34px, 6vw, 64px);
+    line-height: 1.04;
+    letter-spacing: -0.04em;
+}
+
+.description {
+    max-width: 620px;
+    font-size: 16px;
+    line-height: 1.75;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 2px solid #102a2a;
+    margin: 32px 0;
+}
+
+.status-grid div {
+    min-width: 0;
+    padding: 12px;
+    border-right: 1px solid #102a2a;
+}
+
+.status-grid div:last-child {
+    border-right: 0;
+}
+
+dt {
+    color: #7a5a00;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+dd {
+    overflow: hidden;
+    margin: 6px 0 0;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 18px;
+}
+
+button,
+.actions a {
+    border: 2px solid #102a2a;
+    color: #102a2a;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 12px 16px;
+}
+
+button {
+    background: #f0c84b;
+    opacity: 0.65;
+}
+
+.actions a {
+    background: transparent;
+    text-decoration: none;
+}
+
+footer {
+    padding-top: 18px;
+    font-size: 11px;
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .desktop-shell {
+        padding: 10px;
+    }
+
+    .system-bar span:last-child {
+        display: none;
+    }
+
+    .window {
+        margin: 24px auto;
+        box-shadow: 6px 6px 0 rgba(16, 42, 42, 0.22);
+    }
+
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .status-grid div,
+    .status-grid div:last-child {
+        border-right: 0;
+        border-bottom: 1px solid #102a2a;
+    }
+
+    .status-grid div:last-child {
+        border-bottom: 0;
+    }
+
+    .actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .actions a,
+    button {
+        text-align: center;
+    }
+}
