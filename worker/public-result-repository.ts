@@ -30,6 +30,7 @@ export interface PublicResultRepository {
     unpublish(pairId: string, userId: string, unpublishedAt: string): Promise<boolean>;
     getPairState(pairId: string, userId: string): Promise<PublicResultPairState | null>;
     findBySlugHash(slugHash: string): Promise<PublicResultLookup>;
+    findPairIdBySlugHash?(slugHash: string): Promise<string | null>;
 }
 
 type PublicResultRow = {
@@ -268,5 +269,19 @@ export const createPublicResultRepository = (
         if (!row) return null;
         if (row.current_slug_hash !== slugHash) return { status: 'unavailable' };
         return publicResultFromRow(row);
+    },
+    async findPairIdBySlugHash(slugHash) {
+        const row = await database
+            .prepare(
+                `SELECT slug.pair_id
+                 FROM public_result_slug slug
+                 JOIN public_result result ON result.pair_id = slug.pair_id
+                 WHERE slug.slug_hash = ? AND slug.active = 1
+                   AND result.current_slug_hash = slug.slug_hash
+                   AND result.unpublished_at IS NULL`,
+            )
+            .bind(slugHash)
+            .first<{ pair_id: string }>();
+        return row?.pair_id || null;
     },
 });

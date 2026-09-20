@@ -795,6 +795,20 @@
     color: #4e4e3b;
 }
 
+.turnstile-prompt {
+    width: min(100%, 340px);
+    margin: 8px 0;
+    padding: 10px;
+    border: 1px solid #7a5a00;
+    background: #fff8cf;
+}
+
+.turnstile-prompt p {
+    margin: 0 0 8px;
+    color: #443300;
+    font-size: 13px;
+}
+
 .privacy-summary {
     border: 1px dotted #404040;
     padding: 8px 10px;

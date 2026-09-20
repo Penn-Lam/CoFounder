@@ -12,9 +12,10 @@ const createBindings = (): Bindings =>
     ({
         ASSETS: { fetch: async () => new Response('not found', { status: 404 }) },
         MEDIA: { get: async () => null },
+        TURNSTILE_SITE_KEY: 'test-site-key',
     }) as Bindings;
 
-const createHarness = () => {
+const createHarness = (withAbuse = false, withFailingAnalytics = false) => {
     const pairs = new Map<string, PairTestRecord>();
     const repository: PairRepository = {
         async create({ pairId, userId, questionSetVersion, createdAt }) {
@@ -100,6 +101,26 @@ const createHarness = () => {
             renewConsents: async () => undefined,
         }),
         pairs: () => repository,
+        ...(withAbuse
+            ? {
+                  abuse: () => ({
+                      async increment(scope: string) {
+                          return scope === 'pair_user' ? 4 : 1;
+                      },
+                  }),
+                  verifyTurnstile: async (_environment: Bindings, input: { token: string }) =>
+                      input.token === 'valid-turnstile-token',
+              }
+            : {}),
+        ...(withFailingAnalytics
+            ? {
+                  analytics: () => ({
+                      async record() {
+                          throw new Error('analytics unavailable');
+                      },
+                  }),
+              }
+            : {}),
         id: () => `pair-${nextId++}`,
         now: () => new Date('2026-09-20T12:00:00.000Z'),
     };
@@ -125,6 +146,40 @@ const completeProfile = {
 };
 
 describe('Pair Test routes', () => {
+    it('does not turn a completed Pair mutation into a retry when analytics fails', async () => {
+        const { pairs, request } = createHarness(false, true);
+        const response = await request('/api/pairs', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+        });
+
+        expect(response.status).toBe(201);
+        expect(pairs.size).toBe(1);
+    });
+
+    it('requests Turnstile only after Pair creation crosses a risk threshold', async () => {
+        const { request } = createHarness(true);
+        const challenged = await request('/api/pairs', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+        });
+        expect(challenged.status).toBe(403);
+        expect(await challenged.json()).toEqual({
+            code: 'TURNSTILE_REQUIRED',
+            siteKey: 'test-site-key',
+            action: 'pair_create',
+        });
+
+        const verified = await request('/api/pairs', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ turnstileToken: 'valid-turnstile-token' }),
+        });
+        expect(verified.status).toBe(201);
+    });
+
     it('serves the versioned 24 + 6 + 4 question contract', async () => {
         const { request } = createHarness();
         const response = await request('/api/questionnaire/current');

@@ -82,6 +82,13 @@ const retentionDatabase = () => {
             delivered_at TEXT,
             PRIMARY KEY (event_id, user_id)
         );
+        CREATE TABLE product_event (
+            event_id TEXT PRIMARY KEY,
+            pair_id TEXT,
+            user_id TEXT,
+            event_type TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
         INSERT INTO user VALUES ('creator', 'creator@example.com');
     `);
     const insertPair = sqlite.query(
@@ -214,7 +221,12 @@ describe('Pair temporal lifecycle', () => {
             ).map(({ eventId }) => eventId),
         ).toEqual(['expiry-reminder:before-expiry:2026-08-31T12:00:00.001Z']);
 
-        expect(await repository.deleteExpired(cutoffs.expiryCutoff)).toBe(2);
+        expect(
+            await repository.deleteExpired(
+                cutoffs.expiryCutoff,
+                NOW.toISOString(),
+            ),
+        ).toBe(2);
         expect(
             (
                 sqlite
@@ -224,6 +236,24 @@ describe('Pair temporal lifecycle', () => {
                     .all() as Array<{ pair_id: string }>
             ).map((row) => row.pair_id),
         ).toEqual(['at-reminder', 'before-expiry', 'before-reminder']);
+        expect(
+            (
+                sqlite
+                    .query(
+                        `SELECT pair_id FROM product_event
+                         WHERE event_type = 'pair_expired' ORDER BY pair_id`,
+                    )
+                    .all() as Array<{ pair_id: string }>
+            ).map((row) => row.pair_id),
+        ).toEqual(['after-expiry', 'at-expiry']);
+        expect(
+            sqlite
+                .query(
+                    `SELECT DISTINCT created_at FROM product_event
+                     WHERE event_type = 'pair_expired'`,
+                )
+                .get(),
+        ).toEqual({ created_at: NOW.toISOString() });
         sqlite.close();
     });
 

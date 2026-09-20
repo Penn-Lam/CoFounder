@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import { app, type Bindings } from './app';
 
-const garageHtml = '<html><head><title>Garage</title></head></html>';
+const garageHtml = '<html><head><title>Garage</title></head><body></body></html>';
 const desktopHtml =
-    '<html><head><title>Cofounder Diagnostics</title></head></html>';
+    '<html><head><title>Cofounder Diagnostics</title></head><body></body></html>';
 
 const createBindings = (
     media: Map<string, { body: string; contentType: string }> = new Map(),
@@ -71,6 +71,16 @@ describe('Cofounder application shell', () => {
 
         expect(response.status).toBe(200);
         expect(await response.text()).toContain('<title>Garage</title>');
+    });
+
+    it('adds Cloudflare Web Analytics only when a valid token is configured', async () => {
+        const environment = createBindings();
+        environment.WEB_ANALYTICS_TOKEN = 'analytics_token-1';
+        const response = await app.request('/', undefined, environment);
+        const html = await response.text();
+
+        expect(html).toContain('https://static.cloudflareinsights.com/beacon.min.js');
+        expect(html).toContain('analytics_token-1');
     });
 
     it.each(['/desktop', '/desktop/pairs', '/desktop/content-review'])(

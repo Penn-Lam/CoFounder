@@ -50,6 +50,22 @@ const ERROR_MESSAGES: Record<string, string> = {
     DISPLAY_NAME_REQUIRED: '请先设置显示名，再接受邀请。',
 };
 
+type TurnstileChallenge = {
+    siteKey: string;
+    action: 'otp' | 'pair_create' | 'public_generate';
+    attempt?: number;
+};
+
+class ApiError extends Error {
+    constructor(
+        message: string,
+        readonly code?: string,
+        readonly challenge?: TurnstileChallenge,
+    ) {
+        super(message);
+    }
+}
+
 const request = async <T,>(
     path: string,
     body?: unknown,
@@ -64,17 +80,100 @@ const request = async <T,>(
     const data = (await response.json().catch(() => ({}))) as T & {
         code?: string;
         message?: string;
+        siteKey?: string;
+        action?: TurnstileChallenge['action'];
     };
 
     if (!response.ok) {
-        throw new Error(
+        throw new ApiError(
             data.message ||
                 (data.code && ERROR_MESSAGES[data.code]) ||
-                '系统暂时无法完成请求，请稍后重试。',
+                (data.code === 'TURNSTILE_REQUIRED'
+                    ? '请先完成人机验证，再重试刚才的操作。'
+                    : '系统暂时无法完成请求，请稍后重试。'),
+            data.code,
+            data.code === 'TURNSTILE_REQUIRED' && data.siteKey && data.action
+                ? { siteKey: data.siteKey, action: data.action }
+                : undefined,
         );
     }
 
     return data;
+};
+
+type TurnstileRuntime = {
+    render(
+        target: HTMLElement,
+        options: {
+            sitekey: string;
+            action: string;
+            callback(token: string): void;
+            'expired-callback'(): void;
+            'error-callback'(): void;
+        },
+    ): string;
+    remove(widgetId: string): void;
+};
+
+declare global {
+    interface Window {
+        turnstile?: TurnstileRuntime;
+    }
+}
+
+let turnstileScript: Promise<void> | null = null;
+const loadTurnstile = () => {
+    if (window.turnstile) return Promise.resolve();
+    if (turnstileScript) return turnstileScript;
+    turnstileScript = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => {
+            turnstileScript = null;
+            reject(new Error('Turnstile 无法载入，请检查网络后重试。'));
+        };
+        document.head.appendChild(script);
+    });
+    return turnstileScript;
+};
+
+const TurnstilePrompt: React.FC<{
+    challenge: TurnstileChallenge;
+    onToken(token: string): void;
+    onError(message: string): void;
+}> = ({ challenge, onToken, onError }) => {
+    const container = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        let active = true;
+        let widgetId = '';
+        loadTurnstile()
+            .then(() => {
+                if (!active || !container.current || !window.turnstile) return;
+                widgetId = window.turnstile.render(container.current, {
+                    sitekey: challenge.siteKey,
+                    action: challenge.action,
+                    callback: onToken,
+                    'expired-callback': () => onToken(''),
+                    'error-callback': () => onError('人机验证失败，请重试。'),
+                });
+            })
+            .catch((error) => onError((error as Error).message));
+        return () => {
+            active = false;
+            if (widgetId) window.turnstile?.remove(widgetId);
+        };
+    }, [challenge.action, challenge.siteKey, challenge.attempt]);
+
+    return (
+        <div className="turnstile-prompt" role="group" aria-label="安全验证">
+            <p>检测到较高频率的操作，请完成一次安全验证。</p>
+            <div ref={container} />
+        </div>
+    );
 };
 
 type Option = { id: string; text: string };
@@ -297,6 +396,8 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
     const [resendSeconds, setResendSeconds] = useState(0);
     const [otpExpiresSeconds, setOtpExpiresSeconds] = useState(0);
     const [verifiedAccount, setVerifiedAccount] = useState(false);
+    const [otpChallenge, setOtpChallenge] = useState<TurnstileChallenge | null>(null);
+    const [otpTurnstileToken, setOtpTurnstileToken] = useState('');
     const loadAccount = async (continueVerifiedRegistration = false) => {
         const account = await request<AccountResponse>('/api/account');
         if (!account.signedIn) {
@@ -354,10 +455,26 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
     const sendOtp = (event: FormEvent) => {
         event.preventDefault();
         run(async () => {
-            await request('/api/auth/email-otp/send-verification-otp', {
-                email: email.trim(),
-                type: 'sign-in',
-            });
+            try {
+                await request('/api/auth/email-otp/send-verification-otp', {
+                    email: email.trim(),
+                    type: 'sign-in',
+                    turnstileToken: otpTurnstileToken || undefined,
+                });
+            } catch (caught) {
+                if (caught instanceof ApiError && caught.challenge) {
+                    setOtpChallenge((current) => ({
+                        ...caught.challenge!,
+                        attempt: (current?.attempt || 0) + 1,
+                    }));
+                    setOtpTurnstileToken('');
+                    setStage('email');
+                    return;
+                }
+                throw caught;
+            }
+            setOtpChallenge(null);
+            setOtpTurnstileToken('');
             setResendSeconds(60);
             setOtpExpiresSeconds(10 * 60);
             setStage('otp');
@@ -475,11 +592,25 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                 <p className="account-note">
                                     我们会发送一个 10 分钟有效的 6 位验证码。
                                 </p>
+                                {otpChallenge && (
+                                    <TurnstilePrompt
+                                        challenge={otpChallenge}
+                                        onToken={setOtpTurnstileToken}
+                                        onError={setError}
+                                    />
+                                )}
                                 <div className="form-actions">
                                     <button type="button" onClick={() => setStage('privacy')}>
                                         返回
                                     </button>
-                                    <button type="submit" disabled={busy}>发送验证码</button>
+                                    <button
+                                        type="submit"
+                                        disabled={
+                                            busy || Boolean(otpChallenge && !otpTurnstileToken)
+                                        }
+                                    >
+                                        发送验证码
+                                    </button>
                                 </div>
                             </form>
                         )}
@@ -622,6 +753,8 @@ const PairTestFlow: React.FC<{
     const [publicState, setPublicState] = useState<PublicResultState | null>(null);
     const [showPublishControls, setShowPublishControls] = useState(false);
     const [showMyName, setShowMyName] = useState(false);
+    const [publicChallenge, setPublicChallenge] = useState<TurnstileChallenge | null>(null);
+    const [publicTurnstileToken, setPublicTurnstileToken] = useState('');
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     const questions: TestQuestion[] = [
@@ -704,8 +837,13 @@ const PairTestFlow: React.FC<{
         try {
             const receipt = await request<PrintReceiptDetail>(
                 `/api/pairs/${pair.pairId}/public-result`,
-                { showMyName },
+                {
+                    showMyName,
+                    turnstileToken: publicTurnstileToken || undefined,
+                },
             );
+            setPublicChallenge(null);
+            setPublicTurnstileToken('');
             setPublicState({ published: true, myNamePublic: showMyName });
             setShowPublishControls(false);
             window.dispatchEvent(
@@ -714,6 +852,14 @@ const PairTestFlow: React.FC<{
                 }),
             );
         } catch (caught) {
+            if (caught instanceof ApiError && caught.challenge) {
+                setPublicChallenge((current) => ({
+                    ...caught.challenge!,
+                    attempt: (current?.attempt || 0) + 1,
+                }));
+                setPublicTurnstileToken('');
+                return;
+            }
             setError(caught instanceof Error ? caught.message : '公开结果生成失败。');
         } finally {
             setBusy(false);
@@ -861,6 +1007,9 @@ const PairTestFlow: React.FC<{
         try {
             await navigator.clipboard.writeText(`${window.location.origin}${invitationPath}`);
             setCopyStatus('邀请链接已复制。');
+            void request(`/api/pairs/${pair.pairId}/invitation-share`, {}).catch(
+                () => undefined,
+            );
         } catch {
             setCopyStatus('复制失败，请手动复制下面的链接。');
         }
@@ -987,6 +1136,13 @@ const PairTestFlow: React.FC<{
                             公开 Receipt 只包含双方授权后的姓名、公开团队类型、三项安全特征和人工文案。
                             不会包含答案、维度分、Mirror、红线或私人报告内容。
                         </p>
+                        {publicChallenge && (
+                            <TurnstilePrompt
+                                challenge={publicChallenge}
+                                onToken={setPublicTurnstileToken}
+                                onError={setError}
+                            />
+                        )}
                         {publicState?.published && !showPublishControls ? (
                             <>
                                 <p className="public-result-live">公开结果已发布</p>
@@ -998,7 +1154,16 @@ const PairTestFlow: React.FC<{
                                     <button type="button" disabled={busy} onClick={() => setShowPublishControls(true)}>
                                         姓名权限
                                     </button>
-                                    <button type="button" disabled={busy} onClick={publishResult}>
+                                    <button
+                                        type="button"
+                                        disabled={
+                                            busy ||
+                                            Boolean(
+                                                publicChallenge && !publicTurnstileToken,
+                                            )
+                                        }
+                                        onClick={publishResult}
+                                    >
                                         PRINT / SHARE 新链接
                                     </button>
                                     <button type="button" disabled={busy} onClick={unpublishResult}>
@@ -1026,7 +1191,17 @@ const PairTestFlow: React.FC<{
                                             保存姓名权限
                                         </button>
                                     ) : (
-                                        <button type="button" disabled={busy} onClick={publishResult}>
+                                        <button
+                                            type="button"
+                                            disabled={
+                                                busy ||
+                                                Boolean(
+                                                    publicChallenge &&
+                                                        !publicTurnstileToken,
+                                                )
+                                            }
+                                            onClick={publishResult}
+                                        >
                                             生成并打印 Receipt
                                         </button>
                                     )}
@@ -1394,6 +1569,8 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     const [invitationViewerName, setInvitationViewerName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [pairChallenge, setPairChallenge] = useState<TurnstileChallenge | null>(null);
+    const [pairTurnstileToken, setPairTurnstileToken] = useState('');
 
     const loadHome = async () => {
         setLoading(true);
@@ -1444,9 +1621,23 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
         setLoading(true);
         setError('');
         try {
-            const created = await request<PairState>('/api/pairs', {}, 'POST');
+            const created = await request<PairState>(
+                '/api/pairs',
+                { turnstileToken: pairTurnstileToken || undefined },
+                'POST',
+            );
+            setPairChallenge(null);
+            setPairTurnstileToken('');
             setCurrentPair(created);
         } catch (caught) {
+            if (caught instanceof ApiError && caught.challenge) {
+                setPairChallenge((current) => ({
+                    ...caught.challenge!,
+                    attempt: (current?.attempt || 0) + 1,
+                }));
+                setPairTurnstileToken('');
+                return;
+            }
             setError(caught instanceof Error ? caught.message : '无法创建 Pair。');
         } finally {
             setLoading(false);
@@ -1632,11 +1823,22 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                                 </section>
                             )}
                             {error && <div className="pair-save-error" role="alert">{error}</div>}
+                            {pairChallenge && (
+                                <TurnstilePrompt
+                                    challenge={pairChallenge}
+                                    onToken={setPairTurnstileToken}
+                                    onError={setError}
+                                />
+                            )}
                             <div className="diagnostics-actions">
                                 <button
                                     type="button"
                                     onClick={createPair}
-                                    disabled={loading || activeCreatedPairs >= 3}
+                                    disabled={
+                                        loading ||
+                                        activeCreatedPairs >= 3 ||
+                                        Boolean(pairChallenge && !pairTurnstileToken)
+                                    }
                                 >
                                     {loading ? 'LOADING…' : 'NEW PAIR TEST'}
                                 </button>

@@ -50,6 +50,7 @@ const harness = () => {
     let published = false;
     let withdrawn = false;
     let publishCalls = 0;
+    const analyticsEvents = new Map<string, string>();
 
     const view = (): PublicResult => ({
         ...publicResult,
@@ -95,6 +96,9 @@ const harness = () => {
                   ? { status: 'withdrawn' }
                   : { status: 'unavailable' };
         },
+        async findPairIdBySlugHash(hash) {
+            return published && hash === activeHash ? 'pair-1' : null;
+        },
     };
     let nextId = 0;
     const services: AppServices = {
@@ -110,6 +114,13 @@ const harness = () => {
         }),
         pairs: () => ({}) as any,
         publicResults: () => repository,
+        analytics: () => ({
+            async record(event) {
+                if (analyticsEvents.has(event.eventId)) return false;
+                analyticsEvents.set(event.eventId, event.type);
+                return true;
+            },
+        }),
         id: () => `${++nextId}`.padStart(32, 'a'),
         now: () => new Date('2026-09-20T12:00:00.000Z'),
     };
@@ -124,6 +135,7 @@ const harness = () => {
             };
         },
         publishCalls: () => publishCalls,
+        analyticsEvents: () => [...analyticsEvents.values()],
         request: (path: string, init?: RequestInit) =>
             app.request(path, init, bindings()),
     };
@@ -217,5 +229,38 @@ describe('privacy-safe public results', () => {
         expect(html).toContain('Cofounder｜Withdrawn Result');
         expect(html).not.toContain('Penn');
         expect(html).not.toContain('Jason');
+    });
+
+    it('records only allowed successful share actions and deduplicates the Pair', async () => {
+        const test = harness();
+        const created = await (
+            await test.request(
+                '/api/pairs/pair-1/public-result',
+                json('POST', { showMyName: false }),
+            )
+        ).json();
+        const slug = created.publicPath.slice(3);
+
+        expect(
+            (
+                await test.request(
+                    `/api/public-results/${slug}/share`,
+                    json('POST', { action: 'print_open' }),
+                )
+            ).status,
+        ).toBe(400);
+        expect(test.analyticsEvents().filter((type) => type === 'pair_shared')).toHaveLength(0);
+
+        for (const action of ['link_copy', 'qr_download', 'web_share']) {
+            expect(
+                (
+                    await test.request(
+                        `/api/public-results/${slug}/share`,
+                        json('POST', { action }),
+                    )
+                ).status,
+            ).toBe(200);
+        }
+        expect(test.analyticsEvents().filter((type) => type === 'pair_shared')).toHaveLength(1);
     });
 });

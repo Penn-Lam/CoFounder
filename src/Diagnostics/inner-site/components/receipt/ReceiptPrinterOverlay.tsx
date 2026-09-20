@@ -67,6 +67,16 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
     const [status, setStatus] = useState('');
     const captureRef = useRef<HTMLDivElement>(null);
     const publicUrl = `${window.location.origin}${publicPath}`;
+    const slug = publicPath.match(/^\/r\/([^/]+)$/)?.[1] || '';
+
+    const recordShare = (action: string) => {
+        if (!slug) return;
+        void fetch(`/api/public-results/${encodeURIComponent(slug)}/share`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ action }),
+        }).catch(() => undefined);
+    };
 
     useEffect(() => {
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -92,6 +102,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
         try {
             await navigator.clipboard.writeText(publicUrl);
             setStatus('公开链接已复制。');
+            recordShare('link_copy');
         } catch {
             setStatus('复制失败，请从地址栏复制链接。');
         }
@@ -106,6 +117,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
             });
             downloadUrl(dataUrl, 'cofounder-identity-receipt.png');
             setStatus('Receipt PNG 已保存。');
+            recordShare('receipt_download');
         } catch {
             setStatus('图片生成失败，请稍后重试。');
         }
@@ -122,6 +134,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
                 text: result.teamQuote,
                 url: publicUrl,
             });
+            recordShare('web_share');
         } catch (error) {
             if ((error as Error).name !== 'AbortError') setStatus('分享未完成。');
         }
@@ -131,6 +144,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
         if (!qrCode) return;
         downloadUrl(qrCode, 'cofounder-result-qr.png');
         setStatus('二维码 PNG 已保存。');
+        recordShare('qr_download');
     };
 
     return (

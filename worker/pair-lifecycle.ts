@@ -31,7 +31,7 @@ export interface PairLifecycleRepository {
         deliveredAt: string,
     ): Promise<void>;
     markCompletedEvents(deliveredAt: string): Promise<void>;
-    deleteExpired(expiryCutoff: string): Promise<number>;
+    deleteExpired(expiryCutoff: string, expiredAt: string): Promise<number>;
 }
 
 export const pairLifecycleCutoffs = (now: Date) => ({
@@ -148,17 +148,30 @@ export const createPairLifecycleRepository = (
             .bind(deliveredAt)
             .run();
     },
-    async deleteExpired(expiryCutoff) {
-        const result = await database
-            .prepare(
+    async deleteExpired(expiryCutoff, expiredAt) {
+        const [, result] = await database.batch([
+            database
+                .prepare(
+                    `INSERT OR IGNORE INTO product_event
+                        (event_id, pair_id, user_id, event_type, created_at)
+                     SELECT 'pair_expired:' || pair_id, pair_id, NULL,
+                            'pair_expired', ?
+                     FROM cofounder_pair
+                     WHERE last_activity_at <= ? AND report_status <> 'ready'
+                       AND (SELECT COUNT(*) FROM pair_test
+                            WHERE pair_id = cofounder_pair.pair_id
+                              AND submitted_at IS NOT NULL) < 2`,
+                )
+                .bind(expiredAt, expiryCutoff),
+            database.prepare(
                 `DELETE FROM cofounder_pair
                  WHERE last_activity_at <= ? AND report_status <> 'ready'
                    AND (SELECT COUNT(*) FROM pair_test
                         WHERE pair_id = cofounder_pair.pair_id
                           AND submitted_at IS NOT NULL) < 2`,
             )
-            .bind(expiryCutoff)
-            .run();
+                .bind(expiryCutoff),
+        ]);
         return result.meta.changes;
     },
 });
@@ -206,7 +219,7 @@ export const runPairLifecycle = async (
         }
     }
     await repository.markCompletedEvents(timestamp);
-    return repository.deleteExpired(cutoffs.expiryCutoff);
+    return repository.deleteExpired(cutoffs.expiryCutoff, timestamp);
 };
 
 export const runDefaultPairLifecycle = (environment: AuthBindings, now: Date) =>

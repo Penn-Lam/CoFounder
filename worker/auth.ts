@@ -92,12 +92,6 @@ const sendOtpEmail = async (
             status: error instanceof EmailDeliveryError ? error.status : 0,
             providerCode:
                 error instanceof EmailDeliveryError ? error.providerCode : 'unknown',
-            providerMessage:
-                error instanceof EmailDeliveryError
-                    ? error.providerMessage
-                    : 'unavailable',
-            keyLength: environment.RESEND_API_KEY.length,
-            keyPrefixValid: environment.RESEND_API_KEY.startsWith('re_'),
         });
         throw new OtpRequestError(
             'OTP_DELIVERY_FAILED',

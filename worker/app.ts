@@ -44,6 +44,18 @@ import {
     type PrivacyRepository,
 } from './privacy-repository';
 import { runDefaultPairLifecycle } from './pair-lifecycle';
+import {
+    createProductAnalyticsRepository,
+    type ProductAnalyticsRepository,
+    type ProductEvent,
+} from './product-analytics';
+import {
+    createAbuseRepository,
+    evaluateAbuse,
+    verifyTurnstile,
+    type AbusePolicy,
+    type AbuseRepository,
+} from './abuse-controls';
 
 export type GenerateReportMessage = {
     type: 'generate-report';
@@ -70,6 +82,10 @@ export type Bindings = {
     REPORT_QUEUE: Queue<GenerateReportMessage>;
     OPENROUTER_API_KEY?: string;
     JEV_CONFIDENCE_THRESHOLD?: string;
+    TURNSTILE_SECRET?: string;
+    TURNSTILE_SITE_KEY?: string;
+    TURNSTILE_HOSTNAMES?: string;
+    WEB_ANALYTICS_TOKEN?: string;
 } & AuthBindings;
 
 export type AppServices = {
@@ -79,6 +95,9 @@ export type AppServices = {
     reports?(environment: Bindings): ReportRepository;
     publicResults?(environment: Bindings): PublicResultRepository;
     privacy?(environment: Bindings): PrivacyRepository;
+    analytics?(environment: Bindings): ProductAnalyticsRepository;
+    abuse?(environment: Bindings): AbuseRepository;
+    verifyTurnstile?: typeof verifyTurnstile;
     enqueueReport?(
         environment: Bindings,
         message: GenerateReportMessage,
@@ -94,11 +113,36 @@ const defaultServices: AppServices = {
     reports: (environment) => createReportRepository(environment.DB),
     publicResults: (environment) => createPublicResultRepository(environment.DB),
     privacy: (environment) => createPrivacyRepository(environment.DB),
+    analytics: (environment) => createProductAnalyticsRepository(environment.DB),
+    abuse: (environment) => createAbuseRepository(environment.DB),
+    verifyTurnstile,
     enqueueReport: async (environment, message) => {
         await environment.REPORT_QUEUE.send(message);
     },
     id: () => crypto.randomUUID(),
     now: () => new Date(),
+};
+
+export const OTP_ABUSE_POLICIES: AbusePolicy[] = [
+    { scope: 'otp_email', windowSeconds: 3600, challengeAfter: 3, blockAfter: 10, action: 'otp' },
+    { scope: 'otp_ip', windowSeconds: 3600, challengeAfter: 5, blockAfter: 20, action: 'otp' },
+];
+
+export const PAIR_ABUSE_POLICIES: AbusePolicy[] = [
+    { scope: 'pair_user', windowSeconds: 86400, challengeAfter: 3, blockAfter: 10, action: 'pair_create' },
+    { scope: 'pair_ip', windowSeconds: 86400, challengeAfter: 5, blockAfter: 20, action: 'pair_create' },
+];
+
+export const PUBLIC_ABUSE_POLICIES: AbusePolicy[] = [
+    { scope: 'public_user', windowSeconds: 3600, challengeAfter: 3, blockAfter: 10, action: 'public_generate' },
+];
+
+const ACCOUNT_ABUSE_POLICY: AbusePolicy = {
+    scope: 'account_ip',
+    windowSeconds: 86400,
+    challengeAfter: 10,
+    blockAfter: 10,
+    action: 'otp',
 };
 
 const confidenceThreshold = (value?: string) => {
@@ -119,8 +163,25 @@ type AppEnvironment = {
     Variables: { account: CurrentAccount };
 };
 
-const fetchShell = (assets: AssetBinding, path: string) =>
-    assets.fetch(new Request(`https://assets.local${path}`));
+const addWebAnalytics = async (response: Response, token?: string) => {
+    if (!token || !/^[A-Za-z0-9_-]+$/.test(token)) return response;
+    const html = await response.text();
+    const beacon = `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token })}'></script>`;
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    headers.delete('etag');
+    return new Response(html.replace('</body>', `${beacon}</body>`), {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+    });
+};
+
+const fetchShell = async (assets: AssetBinding, path: string, analyticsToken?: string) =>
+    addWebAnalytics(
+        await assets.fetch(new Request(`https://assets.local${path}`)),
+        analyticsToken,
+    );
 
 const hashInvitationToken = async (token: string) => {
     const digest = await crypto.subtle.digest(
@@ -172,8 +233,9 @@ const publicResultShell = async (
     assets: AssetBinding,
     result: PublicResult | null,
     withdrawn = false,
+    analyticsToken?: string,
 ) => {
-    const shell = await fetchShell(assets, '/desktop/index.html');
+    const shell = await fetchShell(assets, '/desktop/index.html', analyticsToken);
     const html = await shell.text();
     return new Response(
         html
@@ -212,6 +274,60 @@ const dispatchReportJobs = async (
 export const createApp = (services: AppServices = defaultServices) => {
     const app = new Hono<AppEnvironment>();
 
+    const recordEvent = async (environment: Bindings, event: ProductEvent) => {
+        if (!services.analytics) return;
+        try {
+            await services.analytics(environment).record(event);
+        } catch {
+            console.error('Product analytics event could not be recorded', {
+                pairId: event.pairId,
+                eventType: event.type,
+            });
+        }
+    };
+
+    const guardAbuse = async (
+        context: Parameters<MiddlewareHandler<AppEnvironment>>[0],
+        policies: AbusePolicy[],
+        keys: Parameters<typeof evaluateAbuse>[2],
+        token: unknown,
+    ) => {
+        if (!services.abuse) return null;
+        const decision = await evaluateAbuse(
+            services.abuse(context.env),
+            policies,
+            keys,
+            services.now(),
+        );
+        if (decision === 'allow') return null;
+        if (decision === 'blocked') {
+            return context.json({ code: 'TOO_MANY_REQUESTS' }, 429);
+        }
+        const action = policies[0].action;
+        const ipAddress = context.req.header('cf-connecting-ip') || 'local-or-unknown';
+        if (
+            typeof token === 'string' &&
+            services.verifyTurnstile &&
+            (await services.verifyTurnstile(context.env, {
+                token,
+                action,
+                ipAddress,
+            }))
+        ) {
+            return null;
+        }
+        return context.env.TURNSTILE_SITE_KEY
+            ? context.json(
+                  {
+                      code: 'TURNSTILE_REQUIRED',
+                      siteKey: context.env.TURNSTILE_SITE_KEY,
+                      action,
+                  },
+                  403,
+              )
+            : context.json({ code: 'TOO_MANY_REQUESTS' }, 429);
+    };
+
     const tryDispatchReport = async (environment: Bindings, pairId: string) => {
         if (!services.reports || !services.enqueueReport) return;
         try {
@@ -249,6 +365,7 @@ export const createApp = (services: AppServices = defaultServices) => {
         const body = (await context.req.json().catch(() => null)) as {
             email?: unknown;
             type?: unknown;
+            turnstileToken?: unknown;
         } | null;
         if (
             typeof body?.email !== 'string' ||
@@ -260,6 +377,16 @@ export const createApp = (services: AppServices = defaultServices) => {
 
         const ipAddress =
             context.req.header('cf-connecting-ip') || 'local-or-unknown';
+        const abuseResponse = await guardAbuse(
+            context,
+            OTP_ABUSE_POLICIES,
+            {
+                otp_email: body.email.trim().toLowerCase(),
+                otp_ip: ipAddress,
+            },
+            body.turnstileToken,
+        );
+        if (abuseResponse) return abuseResponse;
         try {
             await services
                 .auth(context.env)
@@ -302,6 +429,16 @@ export const createApp = (services: AppServices = defaultServices) => {
         if (!session) return context.json({ code: 'UNAUTHORIZED' }, 401);
 
         const body: unknown = await context.req.json().catch(() => null);
+        const abuseResponse = await guardAbuse(
+            context,
+            [ACCOUNT_ABUSE_POLICY],
+            {
+                account_ip:
+                    context.req.header('cf-connecting-ip') || 'local-or-unknown',
+            },
+            undefined,
+        );
+        if (abuseResponse) return abuseResponse;
         if (!hasRequiredAcknowledgements(body)) {
             return context.json({ code: 'ACKNOWLEDGEMENTS_REQUIRED' }, 400);
         }
@@ -433,6 +570,17 @@ export const createApp = (services: AppServices = defaultServices) => {
                 authorization.account.session.user.id,
                 services.now().toISOString(),
             );
+        if (withdrawn) {
+            const pairId = context.req.param('pairId');
+            const userId = authorization.account.session.user.id;
+            await recordEvent(context.env, {
+                eventId: `participant_withdrawn:${pairId}:${userId}`,
+                pairId,
+                userId,
+                type: 'participant_withdrawn',
+                createdAt: services.now().toISOString(),
+            });
+        }
         return withdrawn
             ? context.json({ withdrawn: true })
             : context.json({ code: 'PAIR_NOT_FOUND' }, 404);
@@ -522,9 +670,16 @@ export const createApp = (services: AppServices = defaultServices) => {
             .pairs(context.env)
             .findInvitation(await hashInvitationToken(token));
 
-        return invitation
-            ? context.json({ creatorDisplayName: invitation.creatorDisplayName })
-            : context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
+        if (!invitation) {
+            return context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
+        }
+        await recordEvent(context.env, {
+            eventId: `partner_opened:${invitation.pairId}`,
+            pairId: invitation.pairId,
+            type: 'partner_opened',
+            createdAt: services.now().toISOString(),
+        });
+        return context.json({ creatorDisplayName: invitation.creatorDisplayName });
     });
 
     app.post('/api/invitations/:token/claim', async (context) => {
@@ -557,11 +712,32 @@ export const createApp = (services: AppServices = defaultServices) => {
         if (result === 'unavailable') {
             return context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
         }
+        await recordEvent(context.env, {
+            eventId: `partner_started:${result.pairId}`,
+            pairId: result.pairId,
+            userId: account.session.user.id,
+            type: 'partner_started',
+            createdAt: services.now().toISOString(),
+        });
         return context.json(pairResponse(result));
     });
 
     app.post('/api/pairs', async (context) => {
         const account = context.get('account');
+        const body = (await context.req.json().catch(() => ({}))) as {
+            turnstileToken?: unknown;
+        };
+        const abuseResponse = await guardAbuse(
+            context,
+            PAIR_ABUSE_POLICIES,
+            {
+                pair_user: account.session.user.id,
+                pair_ip:
+                    context.req.header('cf-connecting-ip') || 'local-or-unknown',
+            },
+            body.turnstileToken,
+        );
+        if (abuseResponse) return abuseResponse;
         const createdAt = services.now().toISOString();
         const pair = await services.pairs(context.env).create({
             pairId: services.id(),
@@ -570,9 +746,15 @@ export const createApp = (services: AppServices = defaultServices) => {
             createdAt,
         });
 
-        return pair
-            ? context.json(pairResponse(pair), 201)
-            : context.json({ code: 'ACTIVE_PAIR_LIMIT' }, 409);
+        if (!pair) return context.json({ code: 'ACTIVE_PAIR_LIMIT' }, 409);
+        await recordEvent(context.env, {
+            eventId: `test_started:${pair.pairId}`,
+            pairId: pair.pairId,
+            userId: account.session.user.id,
+            type: 'test_started',
+            createdAt,
+        });
+        return context.json(pairResponse(pair), 201);
     });
 
     app.get('/api/pairs', async (context) => {
@@ -712,7 +894,39 @@ export const createApp = (services: AppServices = defaultServices) => {
         );
         const error = writeError(context, result);
 
-        if (!error) await tryDispatchReport(context.env, pairId);
+        if (!error) {
+            const submitted = result as PairTestRecord;
+            const createdAt = services.now().toISOString();
+            await recordEvent(context.env, {
+                eventId: `participant_completed:${pairId}:${userId}`,
+                pairId,
+                userId,
+                type: 'participant_completed',
+                createdAt,
+            });
+            if (invitationToken) {
+                await recordEvent(context.env, {
+                    eventId: `invitation_created:${pairId}`,
+                    pairId,
+                    userId,
+                    type: 'invitation_created',
+                    createdAt,
+                });
+            }
+            if (
+                submitted.lifecycle === 'pair_complete' ||
+                submitted.lifecycle === 'report_generating' ||
+                submitted.lifecycle === 'report_ready'
+            ) {
+                await recordEvent(context.env, {
+                    eventId: `pair_completed:${pairId}`,
+                    pairId,
+                    type: 'pair_completed',
+                    createdAt,
+                });
+            }
+            await tryDispatchReport(context.env, pairId);
+        }
 
         return (
             error ||
@@ -743,6 +957,14 @@ export const createApp = (services: AppServices = defaultServices) => {
             ? await services.reports(context.env).getResult(pairId)
             : null;
         if (!result) return context.json({ code: 'REPORT_NOT_FOUND' }, 404);
+        const userId = context.get('account').session.user.id;
+        await recordEvent(context.env, {
+            eventId: `result_viewed:${pairId}:${userId}`,
+            pairId,
+            userId,
+            type: 'result_viewed',
+            createdAt: services.now().toISOString(),
+        });
         return context.json({
             pairId,
             status: 'ready',
@@ -772,16 +994,25 @@ export const createApp = (services: AppServices = defaultServices) => {
         }
         const body = (await context.req.json().catch(() => null)) as {
             showMyName?: unknown;
+            turnstileToken?: unknown;
         } | null;
         if (typeof body?.showMyName !== 'boolean') {
             return context.json({ code: 'NAME_PERMISSION_REQUIRED' }, 400);
         }
+        const userId = context.get('account').session.user.id;
+        const abuseResponse = await guardAbuse(
+            context,
+            PUBLIC_ABUSE_POLICIES,
+            { public_user: userId },
+            body.turnstileToken,
+        );
+        if (abuseResponse) return abuseResponse;
         const slug = `${services.id()}${services.id()}`.replaceAll('-', '');
         const slugHash = await hashInvitationToken(slug);
         const repository = services.publicResults(context.env);
         const published = await repository.publish({
             pairId: context.req.param('pairId'),
-            userId: context.get('account').session.user.id,
+            userId,
             slugHash,
             showMyName: body.showMyName,
             publishedAt: services.now().toISOString(),
@@ -796,6 +1027,14 @@ export const createApp = (services: AppServices = defaultServices) => {
         if (lookup?.status !== 'published') {
             return context.json({ code: 'PUBLIC_RESULT_NOT_FOUND' }, 500);
         }
+        const pairId = context.req.param('pairId');
+        await recordEvent(context.env, {
+            eventId: `public_generated:${pairId}`,
+            pairId,
+            userId,
+            type: 'public_generated',
+            createdAt: services.now().toISOString(),
+        });
         return context.json(
             {
                 publicPath: `/r/${slug}`,
@@ -850,13 +1089,74 @@ export const createApp = (services: AppServices = defaultServices) => {
         if (!/^[a-zA-Z0-9]{40,200}$/.test(slug)) {
             return context.json({ status: 'unavailable' }, 404);
         }
-        const lookup = await services
-            .publicResults(context.env)
-            .findBySlugHash(await hashInvitationToken(slug));
-        if (lookup?.status === 'published') return context.json(lookup.result);
+        const repository = services.publicResults(context.env);
+        const slugHash = await hashInvitationToken(slug);
+        const lookup = await repository.findBySlugHash(slugHash);
+        if (lookup?.status === 'published') {
+            const pairId = await repository.findPairIdBySlugHash?.(slugHash);
+            if (pairId) {
+                await recordEvent(context.env, {
+                    eventId: `public_result_viewed:${pairId}`,
+                    pairId,
+                    type: 'result_viewed',
+                    createdAt: services.now().toISOString(),
+                });
+            }
+            return context.json(lookup.result);
+        }
         return lookup?.status === 'withdrawn'
             ? context.json({ status: 'withdrawn' }, 410)
             : context.json({ status: 'unavailable' }, 404);
+    });
+
+    app.post('/api/public-results/:slug/share', async (context) => {
+        const body = (await context.req.json().catch(() => null)) as {
+            action?: unknown;
+        } | null;
+        const actions = new Set([
+            'web_share',
+            'link_copy',
+            'receipt_download',
+            'qr_download',
+        ]);
+        if (typeof body?.action !== 'string' || !actions.has(body.action)) {
+            return context.json({ code: 'INVALID_SHARE_ACTION' }, 400);
+        }
+        const slug = context.req.param('slug');
+        if (!services.publicResults || !/^[a-zA-Z0-9]{40,200}$/.test(slug)) {
+            return context.json({ code: 'PUBLIC_RESULT_NOT_FOUND' }, 404);
+        }
+        const pairId = await services
+            .publicResults(context.env)
+            .findPairIdBySlugHash?.(await hashInvitationToken(slug));
+        if (!pairId) {
+            return context.json({ code: 'PUBLIC_RESULT_NOT_FOUND' }, 404);
+        }
+        await recordEvent(context.env, {
+            eventId: `pair_shared:${pairId}`,
+            pairId,
+            type: 'pair_shared',
+            createdAt: services.now().toISOString(),
+        });
+        return context.json({ recorded: true });
+    });
+
+    app.post('/api/pairs/:pairId/invitation-share', async (context) => {
+        const pairId = context.req.param('pairId');
+        const userId = context.get('account').session.user.id;
+        const pair = await services.pairs(context.env).get(pairId, userId);
+        if (!pair) return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        if (pair.role !== 'creator' || pair.invitationStatus !== 'active') {
+            return context.json({ code: 'INVITATION_NOT_FOUND' }, 409);
+        }
+        await recordEvent(context.env, {
+            eventId: `invitation_shared:${pairId}`,
+            pairId,
+            userId,
+            type: 'invitation_shared',
+            createdAt: services.now().toISOString(),
+        });
+        return context.json({ recorded: true });
     });
 
     app.post('/api/pairs/:pairId/invitation', async (context) => {
@@ -893,16 +1193,26 @@ export const createApp = (services: AppServices = defaultServices) => {
         });
     });
 
-    app.get('/', (context) => fetchShell(context.env.ASSETS, '/index.html'));
+    app.get('/', (context) =>
+        fetchShell(context.env.ASSETS, '/index.html', context.env.WEB_ANALYTICS_TOKEN),
+    );
 
     app.get('/desktop', (context) =>
-        fetchShell(context.env.ASSETS, '/desktop/index.html'),
+        fetchShell(
+            context.env.ASSETS,
+            '/desktop/index.html',
+            context.env.WEB_ANALYTICS_TOKEN,
+        ),
     );
     app.get('/desktop/*', async (context) => {
         const asset = await context.env.ASSETS.fetch(context.req.raw);
 
         return asset.status === 404
-            ? fetchShell(context.env.ASSETS, '/desktop/index.html')
+            ? fetchShell(
+                  context.env.ASSETS,
+                  '/desktop/index.html',
+                  context.env.WEB_ANALYTICS_TOKEN,
+              )
             : asset;
     });
 
@@ -918,12 +1228,17 @@ export const createApp = (services: AppServices = defaultServices) => {
             context.env.ASSETS,
             lookup?.status === 'published' ? lookup.result : null,
             lookup?.status === 'withdrawn',
+            context.env.WEB_ANALYTICS_TOKEN,
         );
     });
 
     for (const path of ['/invite/*', '/auth/*']) {
         app.get(path, (context) =>
-            fetchShell(context.env.ASSETS, '/desktop/index.html'),
+            fetchShell(
+                context.env.ASSETS,
+                '/desktop/index.html',
+                context.env.WEB_ANALYTICS_TOKEN,
+            ),
         );
     }
 
