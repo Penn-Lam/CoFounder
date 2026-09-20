@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Colors from '../../constants/colors';
-import CofounderDiagnostics from '../applications/CofounderDiagnostics';
+import CofounderDiagnostics, {
+    AccountLogin,
+} from '../applications/CofounderDiagnostics';
 import Credits from '../applications/Credits';
 import ShutdownSequence from './ShutdownSequence';
 import Toolbar from './Toolbar';
@@ -34,6 +36,7 @@ const APPLICATIONS: {
 };
 
 const Desktop: React.FC<DesktopProps> = (props) => {
+    const [accountReady, setAccountReady] = useState(false);
     const [windows, setWindows] = useState<DesktopWindows>({});
 
     const [shortcuts, setShortcuts] = useState<DesktopShortcutProps[]>([]);
@@ -165,6 +168,10 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         },
         [getHighestZIndex]
     );
+
+    if (!accountReady) {
+        return <AccountLogin onComplete={() => setAccountReady(true)} />;
+    }
 
     return !shutdown ? (
         <div style={styles.desktop}>

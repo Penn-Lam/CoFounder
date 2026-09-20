@@ -5,10 +5,12 @@
     "scripts": {
         "start": "wrangler dev --port ${PORT:-8787} --persist-to .wrangler/state",
         "build": "webpack --config ./bundler/webpack.prod.js",
-        "dev": "bun run build && bun run media:seed:local && bun run start",
+        "dev": "bun run build && bun run db:migrate:local && bun run media:seed:local && bun run start",
         "deploy": "bun run build && bun run media:upload && wrangler deploy",
         "media:seed:local": "wrangler r2 object put cofounder-media/textures/monitor/video/real.mp4 --local --persist-to .wrangler/state --content-type video/mp4 --file r2-assets/textures/monitor/video/real.mp4",
         "media:upload": "wrangler r2 object put cofounder-media/textures/monitor/video/real.mp4 --remote --content-type video/mp4 --file r2-assets/textures/monitor/video/real.mp4",
+        "db:migrate:local": "wrangler d1 migrations apply cofounder --local --persist-to .wrangler/state",
+        "db:migrate:remote": "wrangler d1 migrations apply cofounder --remote",
         "test": "bun test",
         "typecheck": "tsc --noEmit --project src/tsconfig.json && tsc --noEmit --project worker/tsconfig.json"
     },
@@ -19,6 +21,7 @@
         "@tweenjs/tween.js": "^18.6.4",
         "@types/tweenjs": "^1.0.4",
         "babel-loader": "^8.2.3",
+        "better-auth": "^1.7.5",
         "bezier-easing": "^2.1.0",
         "camera-controls": "^1.34.2",
         "clean-webpack-plugin": "^4.0.0",
@@ -49,6 +52,7 @@
     },
     "devDependencies": {
         "@babel/preset-typescript": "^7.16.7",
+        "@cloudflare/workers-types": "^5.20260920.1",
         "@types/react": "^17.0.43",
         "@types/react-dom": "^17.0.14",
         "@types/stats.js": "^0.17.0",

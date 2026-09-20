@@ -96,6 +96,7 @@ This document records the settled product decisions from the design interview. A
 - Preserve the existing 3D room as the starting point for exploration.
 - On desktop, move from the 3D room into one IE-style Diagnostics Application based on the current “Henry Heffernan — Showcase 2022” interaction rather than splitting the test across multiple windows.
 - On mobile, skip the 3D room and enter a touch-friendly 2D version of the Diagnostics Application while preserving the retro visual language.
+- Do not use eyebrow or kicker labels anywhere in the product. Establish hierarchy with the page title, body copy, and functional system status only.
 - Keep only `Cofounder Diagnostics` and `Credits` as desktop applications, and automatically open Diagnostics when the Participant enters the computer.
 - Populate Start with `New Pair Test`, `My Pairs`, `Privacy & Data`, `Credits`, and `Shut Down`; every item must perform a real action.
 - Send only the brand homepage `/` through the 3D room. Open Invitation, authentication-return, and report deep links directly in the Diagnostics Application.

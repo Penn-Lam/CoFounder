@@ -64,13 +64,6 @@
     user-select: text;
 }
 
-.diagnostics-kicker {
-    color: #7a5a00;
-    font-family: Terminal, monospace;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-}
-
 .diagnostics-content h1 {
     max-width: 760px;
     margin: 14px 0;
@@ -152,6 +145,227 @@
     font-size: 12px;
 }
 
+.account-login-screen {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 32px 20px;
+    box-sizing: border-box;
+    background: #008080;
+    color: #000000;
+}
+
+.account-login-dialog {
+    display: flex;
+    width: min(100%, 560px);
+    flex-direction: column;
+    padding: 3px;
+    box-sizing: border-box;
+    background: #c0c0c0;
+    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+}
+
+.account-login-titlebar {
+    display: flex;
+    min-height: 24px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 6px;
+    background: #000080;
+    color: #ffffff;
+    font-family: MSSerif, sans-serif;
+    font-size: 13px;
+}
+
+.account-panel {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    margin: 0;
+    border: 0;
+    background: #c0c0c0;
+    box-shadow: none;
+}
+
+.account-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 2px solid #102a2a;
+    background: #fffdf4;
+}
+
+.account-login-header {
+    align-items: center;
+    flex-direction: row;
+    gap: 16px;
+    padding: 20px;
+    border-bottom: 1px solid #808080;
+    background: #c0c0c0;
+}
+
+.account-login-icon {
+    display: flex;
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ffffff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    background: #000080;
+    color: #ffffff;
+    font-family: MillenniumBold, serif;
+    font-size: 42px;
+}
+
+.account-login-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.account-login-dialog .account-header h1 {
+    margin: 0;
+    font-family: MSSerif, 'Microsoft YaHei', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0;
+}
+
+.account-header h1 {
+    margin: 0;
+    font-size: clamp(32px, 5vw, 42px);
+}
+
+.account-header p,
+.account-form p,
+.account-ready p {
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.account-form,
+.account-ready {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: #c0c0c0;
+}
+
+.account-form fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid #102a2a;
+}
+
+.account-form legend,
+.field-label {
+    font-family: Terminal, monospace;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+}
+
+.account-form label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-family: Millennium, 'Microsoft YaHei', serif;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.account-form input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin: 1px 0 0;
+}
+
+.account-form input:not([type='checkbox']) {
+    min-height: 40px;
+}
+
+.account-form button,
+.account-ready button {
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+    background: var(--surface-hover);
+    color: #000000;
+    font-family: MSSerif, sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.account-form button:active,
+.account-ready button:active {
+    box-shadow: var(--border-field);
+}
+
+.account-form button:focus-visible,
+.account-ready button:focus-visible,
+.account-form input:focus-visible {
+    outline: 2px solid #000080;
+    outline-offset: 2px;
+}
+
+.account-form button:disabled,
+.account-ready button:disabled {
+    color: #707070;
+    cursor: not-allowed;
+}
+
+.account-note {
+    color: #4e4e3b;
+}
+
+.privacy-summary {
+    border: 1px dotted #404040;
+    padding: 8px 10px;
+    font-family: Millennium, 'Microsoft YaHei', serif;
+    font-size: 14px;
+}
+
+.privacy-summary summary {
+    cursor: pointer;
+    font-family: MillenniumBold, 'Microsoft YaHei', serif;
+}
+
+.privacy-summary p {
+    margin-top: 8px;
+}
+
+.form-actions {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.account-error {
+    margin: 0 24px 24px;
+    padding: 10px;
+    border: 1px solid #850000;
+    background: #fff0e8;
+    color: #850000;
+    font-size: 14px;
+}
+
+.account-ready h2 {
+    font-size: 32px;
+}
+
 .credits-content,
 .shutdown-sequence {
     flex: 1;
@@ -205,5 +419,25 @@
     .diagnostics-actions a,
     .diagnostics-actions button {
         text-align: center;
+    }
+
+    .account-panel {
+        box-shadow: none;
+    }
+
+    .account-login-screen {
+        align-items: center;
+        padding: 12px;
+    }
+
+    .account-header,
+    .account-form,
+    .account-ready {
+        padding: 18px;
+    }
+
+    .form-actions {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
