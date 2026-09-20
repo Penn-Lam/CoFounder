@@ -64,6 +64,11 @@
     user-select: text;
 }
 
+.diagnostics-content.pair-active {
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
 .diagnostics-content h1 {
     max-width: 760px;
     margin: 14px 0;
@@ -143,6 +148,288 @@
     margin-top: auto;
     padding-top: 18px;
     font-size: 12px;
+}
+
+.pair-profile,
+.pair-question,
+.pair-review,
+.pair-complete {
+    display: flex;
+    width: min(100%, 860px);
+    margin: 0 auto;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.pair-question {
+    gap: 10px;
+}
+
+.pair-profile h1,
+.pair-question h1,
+.pair-review h1,
+.pair-complete h1 {
+    margin: 0;
+    font-size: clamp(30px, 4vw, 48px);
+    white-space: pre-line;
+}
+
+.pair-question h1 {
+    font-size: clamp(26px, 3vw, 36px);
+    line-height: 1.08;
+}
+
+.pair-profile fieldset,
+.answer-options {
+    margin: 0;
+    padding: 14px;
+    border: 2px solid #102a2a;
+}
+
+.pair-profile legend,
+.answer-options legend,
+.question-progress,
+.question-number {
+    font-family: Terminal, monospace;
+}
+
+.profile-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 18px;
+}
+
+.profile-options label,
+.immutable-warning label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.4;
+}
+
+.profile-options input,
+.immutable-warning input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin-top: 1px;
+}
+
+.compact-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-selects {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.profile-selects label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-selects select {
+    min-height: 38px;
+    border: 2px solid #808080;
+    border-top-color: #000000;
+    border-left-color: #000000;
+    border-radius: 0;
+    background: #ffffff;
+    color: #000000;
+    font: 14px MSSerif, sans-serif;
+}
+
+.question-progress {
+    display: flex;
+    justify-content: space-between;
+    color: #7a5a00;
+    font-size: 13px;
+}
+
+.pair-question progress {
+    width: 100%;
+    height: 16px;
+    accent-color: #008080;
+}
+
+.question-number {
+    margin: 0;
+    color: #7a5a00;
+    font-size: 18px;
+}
+
+.answer-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 0;
+    padding: 0;
+}
+
+.answer-options label {
+    display: grid;
+    grid-template-columns: 20px 34px 1fr;
+    min-height: 44px;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 10px;
+    border: 2px solid #102a2a;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.answer-options label:hover,
+.answer-options label.selected {
+    background: #fff0a8;
+}
+
+.answer-options input {
+    width: 18px;
+    height: 18px;
+}
+
+.answer-options b {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #102a2a;
+    font-family: Terminal, monospace;
+}
+
+.pair-navigation {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 4px;
+}
+
+.pair-navigation button,
+.pair-save-error button,
+.pair-complete button,
+.draft-list button,
+.review-list button,
+.profile-review {
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+    background: #c3c6ca;
+    color: #000000;
+    font-family: MSSerif, sans-serif;
+    cursor: pointer;
+}
+
+.pair-navigation button:disabled {
+    color: #707070;
+    cursor: not-allowed;
+}
+
+.pair-navigation button:focus-visible,
+.pair-save-error button:focus-visible,
+.review-list button:focus-visible,
+.answer-options input:focus-visible,
+.profile-options input:focus-visible,
+.profile-selects select:focus-visible {
+    outline: 2px solid #000080;
+    outline-offset: 2px;
+}
+
+.pair-save-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 2px solid #850000;
+    background: #fff0e8;
+    color: #850000;
+}
+
+.draft-list,
+.review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.draft-list h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+}
+
+.draft-list button,
+.review-list button,
+.profile-review {
+    display: flex;
+    justify-content: space-between;
+    text-align: left;
+}
+
+.profile-review {
+    gap: 16px;
+}
+
+.profile-review b {
+    flex: 0 0 72px;
+}
+
+.review-list button {
+    gap: 16px;
+}
+
+.review-list button b {
+    flex: 0 0 48px;
+    font-family: Terminal, monospace;
+}
+
+.review-list button span {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.review-list button small {
+    color: #4e4e3b;
+    font-size: 13px;
+    font-weight: normal;
+}
+
+.review-list button strong {
+    font-size: 15px;
+}
+
+.immutable-warning {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border: 3px double #850000;
+    background: #fff0e8;
+}
+
+.immutable-warning strong {
+    color: #850000;
+    font-size: 20px;
+}
+
+.immutable-warning p {
+    margin: 0;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
 }
 
 .account-login-screen {
@@ -419,6 +706,25 @@
     .diagnostics-actions a,
     .diagnostics-actions button {
         text-align: center;
+    }
+
+    .profile-options,
+    .compact-options,
+    .profile-selects {
+        grid-template-columns: 1fr;
+    }
+
+    .pair-question h1,
+    .pair-profile h1,
+    .pair-review h1,
+    .pair-complete h1 {
+        font-size: 32px;
+    }
+
+    .pair-navigation,
+    .pair-save-error {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .account-panel {

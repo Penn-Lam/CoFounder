@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import Window from '../os/Window';
 
 export interface CofounderDiagnosticsProps extends WindowAppProps {}
@@ -31,11 +31,19 @@ const ERROR_MESSAGES: Record<string, string> = {
     DISPLAY_NAME_LENGTH: '显示名去除首尾空格后须为 1–32 个字符。',
     DISPLAY_NAME_CONTROL_CHARACTER: '显示名不能包含控制或隐藏格式字符。',
     ACKNOWLEDGEMENTS_REQUIRED: '请确认全部三项后继续。',
+    ACTIVE_PAIR_LIMIT: '最多只能同时保留 3 个未完成的 Pair。请继续已有测试。',
+    REVISION_CONFLICT: '另一台设备已经保存了更新版本。请重新载入后继续。',
+    PAIR_TEST_SEALED: '这份 Pair Test 已提交，不能再修改。',
+    QUESTION_SET_NOT_FOUND: '这份 Pair Test 使用的题库版本暂时不可用。',
 };
 
-const request = async <T,>(path: string, body?: unknown): Promise<T> => {
+const request = async <T,>(
+    path: string,
+    body?: unknown,
+    method?: 'POST' | 'PUT',
+): Promise<T> => {
     const response = await fetch(path, {
-        method: body === undefined ? 'GET' : 'POST',
+        method: method || (body === undefined ? 'GET' : 'POST'),
         credentials: 'include',
         headers: body === undefined ? undefined : { 'content-type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -54,6 +62,89 @@ const request = async <T,>(path: string, body?: unknown): Promise<T> => {
     }
 
     return data;
+};
+
+type Option = { id: string; text: string };
+type Question = {
+    id: string;
+    dimension?: string;
+    topic?: string;
+    prompt: string;
+    options: Option[];
+};
+type Questionnaire = {
+    questionSetVersion: string;
+    profile: {
+        relationship_stages: string[];
+        durations: string[];
+        responsibilities: string[];
+        company_authority: string[];
+    };
+    questions: Question[];
+    mirrorQuestionIds: string[];
+    redLineQuestions: Question[];
+};
+type PairProfile = {
+    relationshipStages: string[];
+    knownDuration: string;
+    workedDuration: string;
+    responsibilities: string[];
+    companyAuthority: string;
+};
+type PairState = {
+    pairId: string;
+    questionSetVersion: string;
+    revision: number;
+    status: 'draft' | 'submitted';
+    profile: PairProfile | null;
+    answers: Record<string, string>;
+};
+type TestQuestion = Question & {
+    section: 'core' | 'mirror' | 'red-line';
+    answerKey: string;
+};
+
+const PROFILE_LABELS: Record<string, string> = {
+    'equity-discussed': '已经聊到股权',
+    'side-project': '一起做 Side Project',
+    'company-registered': '公司已注册',
+    users: '已经有用户',
+    revenue: '已经有收入',
+    funded: '已融资',
+    'survived-crisis': '一起经历过“大事不妙”',
+    'under-3m': '少于 3 个月',
+    '3-12m': '3–12 个月',
+    '1-3y': '1–3 年',
+    '3-5y': '3–5 年',
+    'over-5y': '5 年以上',
+    product: '产品',
+    frontend: '前端',
+    backend: '后端',
+    'ai-models': 'AI / 模型',
+    research: 'Research',
+    design: 'Design',
+    sales: 'Sales',
+    bd: 'BD',
+    'customer-delivery': '客户交付',
+    'marketing-pr': '市场 / PR',
+    fundraising: '融资',
+    hiring: '招聘',
+    finance: '财务',
+    'company-management': '公司管理',
+    strategy: '战略',
+    other: '其他',
+    self: '我拥有最终决定权',
+    partner: '合伙人拥有最终决定权',
+    shared: '共同决定',
+    undefined: '还没有说清楚',
+};
+
+const emptyProfile: PairProfile = {
+    relationshipStages: [],
+    knownDuration: '',
+    workedDuration: '',
+    responsibilities: [],
+    companyAuthority: '',
 };
 
 type ConsentChecklistProps = {
@@ -386,8 +477,469 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
     );
 };
 
+const toggleValue = (values: string[], value: string) =>
+    values.includes(value)
+        ? values.filter((current) => current !== value)
+        : [...values, value];
+
+const PairTestFlow: React.FC<{
+    initialPair: PairState;
+    questionnaire: Questionnaire;
+    onExit(): void;
+}> = ({ initialPair, questionnaire, onExit }) => {
+    const [pair, setPair] = useState(initialPair);
+    const [profile, setProfile] = useState(initialPair.profile || emptyProfile);
+    const [questionIndex, setQuestionIndex] = useState(
+        initialPair.profile ? 0 : -1,
+    );
+    const [choice, setChoice] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const [review, setReview] = useState(false);
+    const [confirmed, setConfirmed] = useState(false);
+    const headingRef = useRef<HTMLHeadingElement>(null);
+
+    const questions: TestQuestion[] = [
+        ...questionnaire.questions.map((question) => ({
+            ...question,
+            section: 'core' as const,
+            answerKey: `core:${question.id}`,
+        })),
+        ...questionnaire.mirrorQuestionIds.map((id) => {
+            const source = questionnaire.questions.find((question) => question.id === id)!;
+            return {
+                ...source,
+                prompt: `你觉得 TA 会怎么选？\n${source.prompt}`,
+                section: 'mirror' as const,
+                answerKey: `mirror:${source.id}`,
+            };
+        }),
+        ...questionnaire.redLineQuestions.map((question) => ({
+            ...question,
+            section: 'red-line' as const,
+            answerKey: `red-line:${question.id}`,
+        })),
+    ];
+    const current = questions[questionIndex];
+
+    useEffect(() => {
+        setChoice(current ? pair.answers[current.answerKey] || '' : '');
+    }, [questionIndex, pair.answers]);
+
+    useEffect(() => {
+        document.querySelector('.diagnostics-content')?.scrollTo(0, 0);
+        headingRef.current?.focus();
+    }, [questionIndex, review]);
+
+    const saveProfile = async (event: FormEvent) => {
+        event.preventDefault();
+        setBusy(true);
+        setError('');
+        try {
+            const saved = await request<PairState>(
+                `/api/pairs/${pair.pairId}/profile`,
+                { revision: pair.revision, profile },
+                'PUT',
+            );
+            setPair(saved);
+            setQuestionIndex(0);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '资料未保存，请重试。');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const navigate = async (target: number | 'review') => {
+        if (!current || !choice) return;
+        setBusy(true);
+        setError('');
+        try {
+            let saved = pair;
+            if (pair.answers[current.answerKey] !== choice) {
+                saved = await request<PairState>(
+                    `/api/pairs/${pair.pairId}/answers/${current.section}/${current.id}`,
+                    { revision: pair.revision, optionId: choice },
+                    'PUT',
+                );
+                setPair(saved);
+            }
+            if (target === 'review') setReview(true);
+            else setQuestionIndex(target);
+        } catch (caught) {
+            setError(
+                caught instanceof Error
+                    ? `尚未保存：${caught.message}`
+                    : '尚未保存，请检查网络后重试。',
+            );
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const reload = async () => {
+        setBusy(true);
+        setError('');
+        try {
+            const latest = await request<PairState>(`/api/pairs/${pair.pairId}/test`);
+            setPair(latest);
+            setProfile(latest.profile || emptyProfile);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '重新载入失败。');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const submit = async () => {
+        setBusy(true);
+        setError('');
+        try {
+            const sealed = await request<PairState>(
+                `/api/pairs/${pair.pairId}/submit`,
+                { revision: pair.revision },
+            );
+            setPair(sealed);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '提交失败，请重试。');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    if (pair.status === 'submitted') {
+        return (
+            <section className="pair-complete" aria-live="polite">
+                <h1>你的部分完成了。</h1>
+                <p>但合伙不是单机游戏。现在轮到另一个人。</p>
+                <p>邀请链接将在下一阶段开放；已提交答案现在不可修改。</p>
+                <button type="button" onClick={onExit}>返回首页</button>
+            </section>
+        );
+    }
+
+    if (questionIndex === -1) {
+        const complete =
+            profile.relationshipStages.length > 0 &&
+            profile.knownDuration &&
+            profile.workedDuration &&
+            profile.responsibilities.length > 0 &&
+            profile.companyAuthority;
+        return (
+            <form className="pair-profile" onSubmit={saveProfile}>
+                <h1 ref={headingRef} tabIndex={-1}>先说现实，不说 Title</h1>
+                <p>这些是未计分的关系背景，会帮助后续理解你们的答案。</p>
+                <fieldset>
+                    <legend>你们现在是什么状态？（可多选）</legend>
+                    <div className="profile-options">
+                        {questionnaire.profile.relationship_stages.map((value) => (
+                            <label key={value}>
+                                <input
+                                    type="checkbox"
+                                    checked={profile.relationshipStages.includes(value)}
+                                    onChange={() =>
+                                        setProfile({
+                                            ...profile,
+                                            relationshipStages: toggleValue(
+                                                profile.relationshipStages,
+                                                value,
+                                            ),
+                                        })
+                                    }
+                                />
+                                <span>{PROFILE_LABELS[value]}</span>
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+                <div className="profile-selects">
+                    <label>
+                        认识多久？
+                        <select
+                            required
+                            value={profile.knownDuration}
+                            onChange={(event) =>
+                                setProfile({ ...profile, knownDuration: event.target.value })
+                            }
+                        >
+                            <option value="">请选择</option>
+                            {questionnaire.profile.durations.map((value) => (
+                                <option key={value} value={value}>{PROFILE_LABELS[value]}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label>
+                        真正一起工作多久？
+                        <select
+                            required
+                            value={profile.workedDuration}
+                            onChange={(event) =>
+                                setProfile({ ...profile, workedDuration: event.target.value })
+                            }
+                        >
+                            <option value="">请选择</option>
+                            {questionnaire.profile.durations.map((value) => (
+                                <option key={value} value={value}>{PROFILE_LABELS[value]}</option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+                <fieldset>
+                    <legend>你实际负责什么？（可多选）</legend>
+                    <div className="profile-options compact-options">
+                        {questionnaire.profile.responsibilities.map((value) => (
+                            <label key={value}>
+                                <input
+                                    type="checkbox"
+                                    checked={profile.responsibilities.includes(value)}
+                                    onChange={() =>
+                                        setProfile({
+                                            ...profile,
+                                            responsibilities: toggleValue(
+                                                profile.responsibilities,
+                                                value,
+                                            ),
+                                        })
+                                    }
+                                />
+                                <span>{PROFILE_LABELS[value]}</span>
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>目前公司级事项的最终决定权更接近：</legend>
+                    <div className="profile-options">
+                        {questionnaire.profile.company_authority.map((value) => (
+                            <label key={value}>
+                                <input
+                                    type="radio"
+                                    name="authority"
+                                    checked={profile.companyAuthority === value}
+                                    onChange={() =>
+                                        setProfile({ ...profile, companyAuthority: value })
+                                    }
+                                />
+                                <span>{PROFILE_LABELS[value]}</span>
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+                {error && <div className="pair-save-error" role="alert">{error}</div>}
+                <div className="pair-navigation">
+                    <button type="button" onClick={onExit}>退出</button>
+                    <button type="submit" disabled={!complete || busy}>
+                        {busy ? '正在保存…' : '保存并开始 34 道测试题'}
+                    </button>
+                </div>
+            </form>
+        );
+    }
+
+    if (review) {
+        return (
+            <section className="pair-review">
+                <h1 ref={headingRef} tabIndex={-1}>提交前检查</h1>
+                <p>这是你的私人答案总览。你可以返回任意一题修改。</p>
+                <button
+                    type="button"
+                    className="profile-review"
+                    onClick={() => {
+                        setQuestionIndex(-1);
+                        setReview(false);
+                    }}
+                >
+                    <b>关系资料</b>
+                    <span>
+                        阶段：{pair.profile?.relationshipStages.map((value) => PROFILE_LABELS[value]).join('、')}
+                        {' · '}认识：{PROFILE_LABELS[pair.profile?.knownDuration || '']}
+                        {' · '}共事：{PROFILE_LABELS[pair.profile?.workedDuration || '']}
+                        {' · '}职责：{pair.profile?.responsibilities.map((value) => PROFILE_LABELS[value]).join('、')}
+                        {' · '}决定权：{PROFILE_LABELS[pair.profile?.companyAuthority || '']}
+                    </span>
+                </button>
+                <div className="review-list">
+                    {questions.map((question, index) => {
+                        const option = question.options.find(
+                            ({ id }) => id === pair.answers[question.answerKey],
+                        );
+                        return (
+                            <button
+                                type="button"
+                                key={question.answerKey}
+                                onClick={() => {
+                                    setQuestionIndex(index);
+                                    setReview(false);
+                                }}
+                            >
+                                <b>{question.section === 'mirror' ? `M-${question.id}` : question.id}</b>
+                                <span>
+                                    <small>{question.prompt}</small>
+                                    <strong>{option?.text}</strong>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+                <div className="immutable-warning">
+                    <strong>提交不可撤销</strong>
+                    <p>提交后答案会被封存，不能编辑。再次测试将创建新的 Pair Test。</p>
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={confirmed}
+                            onChange={(event) => setConfirmed(event.target.checked)}
+                        />
+                        <span>我已检查答案，并理解提交后不可修改。</span>
+                    </label>
+                </div>
+                {error && <div className="pair-save-error" role="alert">{error}</div>}
+                <div className="pair-navigation">
+                    <button type="button" onClick={() => setReview(false)}>返回最后一题</button>
+                    <button type="button" disabled={!confirmed || busy} onClick={submit}>
+                        {busy ? '正在封存…' : '确认提交 Pair Test'}
+                    </button>
+                </div>
+            </section>
+        );
+    }
+
+    const sectionStart = current.section === 'core' ? 0 : current.section === 'mirror' ? 24 : 30;
+    const sectionTotal = current.section === 'core' ? 24 : current.section === 'mirror' ? 6 : 4;
+    const sectionPosition = questionIndex - sectionStart + 1;
+    const sectionName =
+        current.section === 'core'
+            ? '核心问题'
+            : current.section === 'mirror'
+              ? '镜像测试'
+              : '红线问题';
+
+    return (
+        <section className="pair-question">
+            <div className="question-progress">
+                <span>{sectionName}</span>
+                <span>{sectionPosition} / {sectionTotal}</span>
+            </div>
+            <progress value={sectionPosition} max={sectionTotal} />
+            <p className="question-number">
+                {current.section === 'mirror' ? `M-${current.id}` : current.id}
+            </p>
+            <h1 ref={headingRef} tabIndex={-1}>{current.prompt}</h1>
+            <fieldset className="answer-options">
+                <legend className="sr-only">选择一个答案</legend>
+                {current.options.map((option) => (
+                    <label key={option.id} className={choice === option.id ? 'selected' : ''}>
+                        <input
+                            type="radio"
+                            name="answer"
+                            value={option.id}
+                            checked={choice === option.id}
+                            onChange={() => setChoice(option.id)}
+                        />
+                        <b>{option.id}</b>
+                        <span>{option.text}</span>
+                    </label>
+                ))}
+            </fieldset>
+            {error && (
+                <div className="pair-save-error" role="alert">
+                    <span>{error}</span>
+                    <button type="button" onClick={reload} disabled={busy}>重新载入服务端版本</button>
+                </div>
+            )}
+            <div className="pair-navigation">
+                <button
+                    type="button"
+                    onClick={() => {
+                        const previous = questionIndex - 1;
+                        if (!choice || pair.answers[current.answerKey] === choice) {
+                            setQuestionIndex(previous);
+                        } else {
+                            navigate(previous);
+                        }
+                    }}
+                    disabled={busy}
+                >
+                    上一页
+                </button>
+                <button
+                    type="button"
+                    onClick={() =>
+                        navigate(questionIndex === questions.length - 1 ? 'review' : questionIndex + 1)
+                    }
+                    disabled={!choice || busy}
+                >
+                    {busy
+                        ? '正在保存…'
+                        : questionIndex === questions.length - 1
+                          ? '保存并检查全部答案'
+                          : '保存并继续'}
+                </button>
+            </div>
+        </section>
+    );
+};
+
 const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     const compact = window.innerWidth < 640;
+    const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+    const [activePairs, setActivePairs] = useState<PairState[]>([]);
+    const [currentPair, setCurrentPair] = useState<PairState | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    const loadHome = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const [loadedQuestionnaire, pairList] = await Promise.all([
+                request<Questionnaire>('/api/questionnaire/current'),
+                request<{ pairs: PairState[] }>('/api/pairs'),
+            ]);
+            setQuestionnaire(loadedQuestionnaire);
+            setActivePairs(pairList.pairs);
+            setCurrentPair(null);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '无法载入 Pair Test。');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadHome();
+    }, []);
+
+    const createPair = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const created = await request<PairState>('/api/pairs', {}, 'POST');
+            setCurrentPair(created);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '无法创建 Pair。');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openPair = async (pair: PairState) => {
+        setLoading(true);
+        setError('');
+        try {
+            if (questionnaire?.questionSetVersion !== pair.questionSetVersion) {
+                const version = await request<Questionnaire>(
+                    `/api/questionnaire/${encodeURIComponent(pair.questionSetVersion)}`,
+                );
+                setQuestionnaire(version);
+            }
+            setCurrentPair(pair);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '无法载入这份 Pair 的题库。');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <Window
@@ -400,7 +952,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             closeWindow={props.onClose}
             onInteract={props.onInteract}
             minimizeWindow={props.onMinimize}
-            bottomLeftText="SYSTEM READY"
+            bottomLeftText={currentPair ? `PAIR ${currentPair.pairId}` : 'SYSTEM READY'}
         >
             <div className="diagnostics-browser">
                 <div className="browser-menu" aria-label="Browser menu">
@@ -412,25 +964,61 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                 </div>
                 <div className="address-bar">
                     <span>Address</span>
-                    <div>cofounder.local/desktop</div>
+                    <div>
+                        cofounder.local/desktop/{currentPair ? `pair/${currentPair.pairId}` : 'home'}
+                    </div>
                     <strong>Go</strong>
                 </div>
-                <main className="diagnostics-content">
-                    <h1>你们放在一起，会形成一家什么样的公司？</h1>
-                    <p className="diagnostics-description">
-                        双人合伙关系压力测试。Account 已登录，下一步将从这里创建 Pair Test。
-                    </p>
-                    <div className="diagnostics-status">
-                        <div><b>MODE</b><span>2 PARTICIPANTS</span></div>
-                        <div><b>DURATION</b><span>ABOUT 10 MIN</span></div>
-                        <div><b>ACCOUNT</b><span>VERIFIED</span></div>
-                    </div>
-                    <div className="diagnostics-actions">
-                        <button type="button" disabled>NEW PAIR TEST — ISSUE #4</button>
-                    </div>
-                    <p className="diagnostics-disclaimer">
-                        娱乐测试，不构成心理、投资、法律或专业建议。
-                    </p>
+                <main
+                    className={`diagnostics-content${currentPair ? ' pair-active' : ''}`}
+                >
+                    {currentPair && questionnaire ? (
+                        <PairTestFlow
+                            initialPair={currentPair}
+                            questionnaire={questionnaire}
+                            onExit={loadHome}
+                        />
+                    ) : (
+                        <>
+                            <h1>你们放在一起，会形成一家什么样的公司？</h1>
+                            <p className="diagnostics-description">
+                                34 道双人合伙关系压力测试。先完成自己的部分，再邀请你的 Cofounder。
+                            </p>
+                            <div className="diagnostics-status">
+                                <div><b>MODE</b><span>2 PARTICIPANTS</span></div>
+                                <div><b>DURATION</b><span>ABOUT 10 MIN</span></div>
+                                <div><b>DRAFTS</b><span>{activePairs.length} / 3 ACTIVE</span></div>
+                            </div>
+                            {activePairs.length > 0 && (
+                                <section className="draft-list">
+                                    <h2>继续未完成的 Pair Test</h2>
+                                    {activePairs.map((pair) => (
+                                        <button
+                                            type="button"
+                                            key={pair.pairId}
+                                            onClick={() => openPair(pair)}
+                                        >
+                                            <span>Pair {pair.pairId.slice(0, 8)}</span>
+                                            <b>{Object.keys(pair.answers).length} / 34 已答</b>
+                                        </button>
+                                    ))}
+                                </section>
+                            )}
+                            {error && <div className="pair-save-error" role="alert">{error}</div>}
+                            <div className="diagnostics-actions">
+                                <button
+                                    type="button"
+                                    onClick={createPair}
+                                    disabled={loading || activePairs.length >= 3}
+                                >
+                                    {loading ? 'LOADING…' : 'NEW PAIR TEST'}
+                                </button>
+                            </div>
+                            <p className="diagnostics-disclaimer">
+                                娱乐测试，不构成科学、心理、投资、法律或专业建议，也不能替代双方直接沟通。
+                            </p>
+                        </>
+                    )}
                 </main>
             </div>
         </Window>

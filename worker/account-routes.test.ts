@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { createApp, type AppServices, type Bindings } from './app';
 import { CURRENT_CONSENTS, type ConsentRecord } from './account';
 import { OtpRequestError } from './auth';
+import type { PairRepository } from './pair-repository';
 
 const createBindings = (): Bindings =>
     ({
@@ -14,6 +15,7 @@ const createServices = (options?: {
     consents?: ConsentRecord[];
 }) => {
     const writes: Array<{ userId: string; name: string; acceptedAt: string }> = [];
+    const pairs = {} as PairRepository;
     const services: AppServices = {
         auth: () => ({
             handler: async () => new Response('auth handler'),
@@ -34,6 +36,8 @@ const createServices = (options?: {
             completeRegistration: async (record) => writes.push(record),
             renewConsents: async () => undefined,
         }),
+        pairs: () => pairs,
+        id: () => 'pair-1',
         now: () => new Date('2026-09-20T12:00:00.000Z'),
     };
 

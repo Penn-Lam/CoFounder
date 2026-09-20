@@ -14,6 +14,18 @@ import {
     type AuthBindings,
     type AuthRuntime,
 } from './auth';
+import {
+    createPairRepository,
+    type PairRepository,
+    type PairTestRecord,
+    type PairWriteResult,
+} from './pair-repository';
+import {
+    getQuestionnaireVersion,
+    publicQuestionnaire,
+    QUESTION_SET_VERSION,
+    validateProfile,
+} from './questionnaire';
 
 type AssetBinding = {
     fetch(input: Request | URL | string): Promise<Response>;
@@ -37,16 +49,28 @@ export type Bindings = {
 export type AppServices = {
     auth(environment: Bindings): AuthRuntime;
     accounts(environment: Bindings): AccountRepository;
+    pairs(environment: Bindings): PairRepository;
+    id(): string;
     now(): Date;
 };
 
 const defaultServices: AppServices = {
     auth: createAuth,
     accounts: (environment) => createAccountRepository(environment.DB),
+    pairs: (environment) => createPairRepository(environment.DB),
+    id: () => crypto.randomUUID(),
     now: () => new Date(),
 };
 
-type AppEnvironment = { Bindings: Bindings };
+type CurrentAccount = {
+    session: NonNullable<Awaited<ReturnType<AuthRuntime['getSession']>>>;
+    consentState: ReturnType<typeof getConsentState>;
+};
+
+type AppEnvironment = {
+    Bindings: Bindings;
+    Variables: { account: CurrentAccount };
+};
 
 const fetchShell = (assets: AssetBinding, path: string) =>
     assets.fetch(new Request(`https://assets.local${path}`));
@@ -177,17 +201,197 @@ export const createApp = (services: AppServices = defaultServices) => {
         if (account.consentState !== 'current') {
             return context.json({ code: 'CONSENT_RENEWAL_REQUIRED' }, 428);
         }
+        context.set('account', account);
         await next();
     };
 
     app.use('/api/pairs/*', requireCurrentConsent);
     app.use('/api/questionnaire/*', requireCurrentConsent);
-    app.all('/api/pairs/*', (context) =>
-        context.json({ code: 'NOT_IMPLEMENTED' }, 501),
+
+    const pairResponse = (pair: PairTestRecord) => ({
+        pairId: pair.pairId,
+        questionSetVersion: pair.questionSetVersion,
+        revision: pair.revision,
+        status: pair.submittedAt ? ('submitted' as const) : ('draft' as const),
+        profile: pair.state.profile,
+        answers: pair.state.answers,
+        submittedAt: pair.submittedAt,
+    });
+
+    const writeError = (
+        context: Parameters<MiddlewareHandler<AppEnvironment>>[0],
+        result: PairWriteResult,
+    ) => {
+        if (result === 'not_found') {
+            return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        }
+        if (result === 'sealed') {
+            return context.json({ code: 'PAIR_TEST_SEALED' }, 409);
+        }
+        if (result === 'conflict') {
+            return context.json({ code: 'REVISION_CONFLICT' }, 409);
+        }
+        return null;
+    };
+
+    app.get('/api/questionnaire/current', (context) =>
+        context.json(publicQuestionnaire),
     );
-    app.all('/api/questionnaire/*', (context) =>
-        context.json({ code: 'NOT_IMPLEMENTED' }, 501),
-    );
+
+    app.get('/api/questionnaire/:version', (context) => {
+        const version = getQuestionnaireVersion(context.req.param('version'));
+        return version
+            ? context.json(version.questionnaire)
+            : context.json({ code: 'QUESTION_SET_NOT_FOUND' }, 404);
+    });
+
+    app.post('/api/pairs', async (context) => {
+        const account = context.get('account');
+        const createdAt = services.now().toISOString();
+        const pair = await services.pairs(context.env).create({
+            pairId: services.id(),
+            userId: account.session.user.id,
+            questionSetVersion: QUESTION_SET_VERSION,
+            createdAt,
+        });
+
+        return pair
+            ? context.json(pairResponse(pair), 201)
+            : context.json({ code: 'ACTIVE_PAIR_LIMIT' }, 409);
+    });
+
+    app.get('/api/pairs', async (context) => {
+        const pairs = await services
+            .pairs(context.env)
+            .listActive(context.get('account').session.user.id);
+
+        return context.json({ pairs: pairs.map(pairResponse) });
+    });
+
+    app.get('/api/pairs/:pairId/test', async (context) => {
+        const pair = await services
+            .pairs(context.env)
+            .get(context.req.param('pairId'), context.get('account').session.user.id);
+
+        return pair
+            ? context.json(pairResponse(pair))
+            : context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+    });
+
+    app.put('/api/pairs/:pairId/profile', async (context) => {
+        const body = (await context.req.json().catch(() => null)) as {
+            revision?: unknown;
+            profile?: unknown;
+        } | null;
+        if (!Number.isInteger(body?.revision) || !validateProfile(body?.profile)) {
+            return context.json({ code: 'INVALID_PROFILE' }, 400);
+        }
+
+        const repository = services.pairs(context.env);
+        const pairId = context.req.param('pairId');
+        const userId = context.get('account').session.user.id;
+        const pair = await repository.get(pairId, userId);
+        if (!pair) return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        const questionSet = getQuestionnaireVersion(pair.questionSetVersion);
+        if (!questionSet) {
+            return context.json({ code: 'QUESTION_SET_NOT_FOUND' }, 409);
+        }
+        const state = structuredClone(pair.state);
+        state.profile = body.profile;
+        const result = await repository.save(
+            pairId,
+            userId,
+            body.revision as number,
+            state,
+            services.now().toISOString(),
+        );
+        const error = writeError(context, result);
+
+        return error || context.json(pairResponse(result as PairTestRecord));
+    });
+
+    app.put('/api/pairs/:pairId/answers/:section/:questionId', async (context) => {
+        const body = (await context.req.json().catch(() => null)) as {
+            revision?: unknown;
+            optionId?: unknown;
+        } | null;
+        const section = context.req.param('section');
+        const questionId = context.req.param('questionId');
+        const revision = body?.revision;
+        const optionId = body?.optionId;
+        if (!Number.isInteger(revision) || typeof optionId !== 'string') {
+            return context.json({ code: 'INVALID_ANSWER' }, 400);
+        }
+
+        const repository = services.pairs(context.env);
+        const pairId = context.req.param('pairId');
+        const userId = context.get('account').session.user.id;
+        const pair = await repository.get(pairId, userId);
+        if (!pair) return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        const questionSet = getQuestionnaireVersion(pair.questionSetVersion);
+        if (!questionSet) {
+            return context.json({ code: 'QUESTION_SET_NOT_FOUND' }, 409);
+        }
+        if (!questionSet.isValidAnswer(section, questionId, optionId)) {
+            return context.json({ code: 'INVALID_ANSWER' }, 400);
+        }
+        const state = structuredClone(pair.state);
+        state.answers[`${section}:${questionId}`] = optionId as string;
+        const result = await repository.save(
+            pairId,
+            userId,
+            revision as number,
+            state,
+            services.now().toISOString(),
+        );
+        const error = writeError(context, result);
+
+        return error || context.json(pairResponse(result as PairTestRecord));
+    });
+
+    app.post('/api/pairs/:pairId/submit', async (context) => {
+        const body = (await context.req.json().catch(() => null)) as {
+            revision?: unknown;
+        } | null;
+        const revision = body?.revision;
+        if (!Number.isInteger(revision)) {
+            return context.json({ code: 'INVALID_REVISION' }, 400);
+        }
+
+        const repository = services.pairs(context.env);
+        const pairId = context.req.param('pairId');
+        const userId = context.get('account').session.user.id;
+        const pair = await repository.get(pairId, userId);
+        if (!pair) return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        if (pair.submittedAt) return context.json({ code: 'PAIR_TEST_SEALED' }, 409);
+        const questionSet = getQuestionnaireVersion(pair.questionSetVersion);
+        if (!questionSet) {
+            return context.json({ code: 'QUESTION_SET_NOT_FOUND' }, 409);
+        }
+        const missingAnswers = questionSet.requiredAnswerKeys.filter(
+            (key) => pair.state.answers[key] === undefined,
+        );
+        if (!pair.state.profile || missingAnswers.length > 0) {
+            return context.json(
+                {
+                    code: 'PAIR_TEST_INCOMPLETE',
+                    missingProfile: pair.state.profile === null,
+                    missingAnswers,
+                },
+                400,
+            );
+        }
+
+        const result = await repository.submit(
+            pairId,
+            userId,
+            revision as number,
+            services.now().toISOString(),
+        );
+        const error = writeError(context, result);
+
+        return error || context.json(pairResponse(result as PairTestRecord));
+    });
 
     app.get('/', (context) => fetchShell(context.env.ASSETS, '/index.html'));
 
