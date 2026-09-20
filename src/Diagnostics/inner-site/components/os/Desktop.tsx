@@ -4,6 +4,7 @@ import CofounderDiagnostics, {
     AccountLogin,
 } from '../applications/CofounderDiagnostics';
 import Credits from '../applications/Credits';
+import PrivacyData from '../applications/PrivacyData';
 import ShutdownSequence from './ShutdownSequence';
 import Toolbar from './Toolbar';
 import DesktopShortcut, { DesktopShortcutProps } from './DesktopShortcut';
@@ -37,6 +38,12 @@ const APPLICATIONS: {
         name: 'Credits',
         shortcutIcon: 'credits',
         component: Credits,
+    },
+    privacy: {
+        key: 'privacy',
+        name: 'Privacy & Data',
+        shortcutIcon: 'computerBig',
+        component: PrivacyData,
     },
 };
 
@@ -189,8 +196,25 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     }
 
     const isContentReview = window.location.pathname === '/desktop/content-review';
+    const isPrivacyData = window.location.pathname === '/desktop/privacy';
+    if (isPrivacyData) {
+        return (
+            <div style={styles.desktop}>
+                <PrivacyData
+                    onInteract={() => undefined}
+                    onMinimize={() => undefined}
+                    onClose={() => window.location.assign('/desktop')}
+                />
+            </div>
+        );
+    }
     if (!accountReady && !isContentReview) {
-        return <AccountLogin onComplete={() => setAccountReady(true)} />;
+        return (
+            <AccountLogin
+                onComplete={() => setAccountReady(true)}
+                onPrivacyData={() => window.location.assign('/desktop/privacy')}
+            />
+        );
     }
 
     return !shutdown ? (

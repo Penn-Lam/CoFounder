@@ -10,6 +10,7 @@ export interface CofounderDiagnosticsProps extends WindowAppProps {}
 
 export interface AccountLoginProps {
     onComplete(): void;
+    onPrivacyData?(): void;
 }
 
 type Stage =
@@ -110,7 +111,8 @@ type PairState = {
         | 'partner_in_progress'
         | 'pair_complete'
         | 'report_generating'
-        | 'report_ready';
+        | 'report_ready'
+        | 'participant_withdrawn';
     reportStatus: 'pending' | 'generating' | 'ready';
     notificationReady: boolean;
     partnerStatus: 'not_started' | 'started' | null;
@@ -277,7 +279,10 @@ const ConsentChecklist: React.FC<ConsentChecklistProps> = ({
     </fieldset>
 );
 
-export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
+export const AccountLogin: React.FC<AccountLoginProps> = ({
+    onComplete,
+    onPrivacyData,
+}) => {
     const [stage, setStage] = useState<Stage>('loading');
     const [ageEligible, setAgeEligible] = useState(false);
     const [termsPrivacy, setTermsPrivacy] = useState(false);
@@ -572,6 +577,11 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
                                 <button type="submit" disabled={busy || !allAcknowledged}>
                                     确认并继续
                                 </button>
+                                {onPrivacyData && (
+                                    <button type="button" onClick={onPrivacyData}>
+                                        暂不续签，前往 Privacy &amp; Data
+                                    </button>
+                                )}
                             </form>
                         )}
 
@@ -853,6 +863,19 @@ const PairTestFlow: React.FC<{
             setCopyStatus('复制失败，请手动复制下面的链接。');
         }
     };
+
+    if (pair.lifecycle === 'participant_withdrawn') {
+        return (
+            <section className="pair-complete" aria-live="polite">
+                <h1>这份 Pair 已失效</h1>
+                <p>
+                    另一位参与者已撤回自己的数据。对方提供的答案已删除，旧报告和公开结果也已失效。
+                </p>
+                <p>你的独立答案仍被保留，可在 Privacy &amp; Data 中导出或删除。</p>
+                <button type="button" onClick={onExit}>返回首页</button>
+            </section>
+        );
+    }
 
     if (pair.status === 'submitted') {
         if (pair.reportStatus === 'ready' && report) {
@@ -1473,9 +1496,15 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     const activeCreatedPairs = activePairs.filter(
         (pair) =>
             pair.role === 'creator' &&
-            !['pair_complete', 'report_generating', 'report_ready'].includes(pair.lifecycle),
+            ![
+                'pair_complete',
+                'report_generating',
+                'report_ready',
+                'participant_withdrawn',
+            ].includes(pair.lifecycle),
     ).length;
     const pairStatus = (pair: PairState) => {
+        if (pair.lifecycle === 'participant_withdrawn') return '另一位已撤回数据';
         if (pair.reportStatus === 'ready') return '报告已就绪';
         if (pair.reportStatus === 'generating') return '正在生成报告';
         if (pair.lifecycle === 'pair_complete') return '报告等待处理中';

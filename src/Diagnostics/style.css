@@ -854,6 +854,135 @@
     background: #f5e7a8;
 }
 
+.privacy-data {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding: clamp(20px, 4vw, 38px);
+    background: #fffdf4;
+    color: #102a2a;
+    user-select: text;
+}
+
+.privacy-data header,
+.privacy-data section,
+.privacy-data article,
+.privacy-data form {
+    display: flex;
+    flex-direction: column;
+}
+
+.privacy-data header {
+    gap: 6px;
+    padding-bottom: 12px;
+    border-bottom: 4px double #102a2a;
+}
+
+.privacy-data h1 {
+    font-family: MillenniumBold, 'Microsoft YaHei', serif;
+    font-size: clamp(34px, 5vw, 54px);
+    letter-spacing: -0.04em;
+}
+
+.privacy-data section {
+    gap: 10px;
+    padding: 18px;
+    border: 1px solid #102a2a;
+    background: #f5e7a8;
+}
+
+.privacy-data section:nth-of-type(even) {
+    background: #f4f0de;
+}
+
+.privacy-data h2 {
+    font-size: 25px;
+}
+
+.privacy-data p {
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.privacy-data button {
+    width: fit-content;
+    min-height: 36px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+    background: #c0c0c0;
+    color: #000000;
+    font-family: MSSerif, sans-serif;
+    cursor: pointer;
+}
+
+.privacy-data button:focus-visible,
+.privacy-data input:focus-visible {
+    outline: 2px solid #000080;
+    outline-offset: 2px;
+}
+
+.privacy-data button:disabled {
+    color: #707070;
+    cursor: not-allowed;
+}
+
+.privacy-data .danger-button {
+    background: #850000;
+    color: #ffffff;
+}
+
+.privacy-pair-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.privacy-pair-list article {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px dashed #102a2a;
+    background: #fffdf4;
+}
+
+.privacy-pair-list article > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 13px;
+}
+
+.privacy-confirmation {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    border: 3px solid #850000 !important;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.privacy-confirmation form,
+.privacy-confirmation > div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.privacy-confirmation input {
+    width: min(100%, 260px);
+    min-height: 40px;
+    padding: 4px 10px;
+    box-sizing: border-box;
+    font-family: Terminal, monospace;
+    font-size: 26px;
+    letter-spacing: 0.3em;
+}
+
 .public-result-live {
     width: fit-content;
     padding: 4px 8px;
@@ -1264,6 +1393,7 @@
 .public-result-loading,
 .public-result-unavailable {
     display: grid;
+    width: 100%;
     min-height: 100vh;
     place-items: center;
     background: #102a2a;
@@ -1410,5 +1540,17 @@
 
     .receipt-actions {
         align-items: stretch;
+    }
+
+    .privacy-data {
+        padding: 18px 14px 40px;
+    }
+
+    .privacy-pair-list article {
+        flex-direction: column;
+    }
+
+    .privacy-data button {
+        width: 100%;
     }
 }

@@ -17,7 +17,8 @@ export type PairTestRecord = {
         | 'partner_in_progress'
         | 'pair_complete'
         | 'report_generating'
-        | 'report_ready';
+        | 'report_ready'
+        | 'participant_withdrawn';
     reportStatus: ReportStatus;
     partnerStatus: 'not_started' | 'started' | null;
     invitationStatus: 'unavailable' | 'active' | 'cancelled' | 'claimed';
@@ -105,6 +106,7 @@ type PairRow = {
     partner_state_json: string | null;
     partner_submitted_at: string | null;
     report_status: ReportStatus;
+    counterpart_withdrawn: number;
 };
 
 const toRecord = (row: PairRow): PairTestRecord => {
@@ -116,7 +118,9 @@ const toRecord = (row: PairRow): PairTestRecord => {
         partnerState &&
             (partnerState.profile || Object.keys(partnerState.answers).length > 0),
     );
-    const lifecycle = row.report_status === 'ready'
+    const lifecycle = row.counterpart_withdrawn === 1
+        ? 'participant_withdrawn'
+        : row.report_status === 'ready'
         ? 'report_ready'
         : row.report_status === 'generating'
           ? 'report_generating'
@@ -140,7 +144,9 @@ const toRecord = (row: PairRow): PairTestRecord => {
                     ? 'started'
                     : 'not_started'
                 : null,
-        invitationStatus: row.claimed_at
+        invitationStatus: row.counterpart_withdrawn === 1
+            ? 'unavailable'
+            : row.claimed_at
             ? 'claimed'
             : !row.submitted_at
               ? 'unavailable'
@@ -160,13 +166,21 @@ const pairSelect = `SELECT pt.pair_id, pt.user_id, pt.question_set_version, pt.r
                             pt.state_json, pt.created_at, pt.updated_at, pt.submitted_at,
                             pair.creator_user_id, pair.partner_user_id,
                             pair.invite_token_hash, pair.claimed_at, pair.report_status,
+                            CASE WHEN counterpart_withdrawal.role IS NULL THEN 0 ELSE 1 END
+                                AS counterpart_withdrawn,
                             partner_test.state_json AS partner_state_json,
                             partner_test.submitted_at AS partner_submitted_at
                      FROM pair_test pt
                      JOIN cofounder_pair pair ON pair.pair_id = pt.pair_id
                      LEFT JOIN pair_test partner_test
                        ON partner_test.pair_id = pair.pair_id
-                      AND partner_test.user_id = pair.partner_user_id`;
+                      AND partner_test.user_id = pair.partner_user_id
+                     LEFT JOIN pair_participant_withdrawal counterpart_withdrawal
+                       ON counterpart_withdrawal.pair_id = pair.pair_id
+                      AND counterpart_withdrawal.role = CASE
+                          WHEN pt.user_id = pair.creator_user_id THEN 'partner'
+                          ELSE 'creator'
+                      END`;
 
 export const createPairRepository = (database: D1Database): PairRepository => {
     const get = async (pairId: string, userId: string) => {
@@ -200,6 +214,10 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                   AND creator_test.user_id = pair.creator_user_id
                  WHERE pair.invite_token_hash = ?
                    AND pair.partner_user_id IS NULL
+                   AND NOT EXISTS (
+                       SELECT 1 FROM pair_participant_withdrawal
+                       WHERE pair_id = pair.pair_id
+                   )
                    AND creator_test.submitted_at IS NOT NULL`,
             )
             .bind(tokenHash)
@@ -272,7 +290,11 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                     `UPDATE pair_test
                      SET state_json = ?, revision = revision + 1, updated_at = ?
                      WHERE pair_id = ? AND user_id = ? AND revision = ?
-                       AND submitted_at IS NULL`,
+                       AND submitted_at IS NULL
+                       AND NOT EXISTS (
+                           SELECT 1 FROM pair_participant_withdrawal
+                           WHERE pair_id = ?
+                       )`,
                 )
                 .bind(
                     JSON.stringify(state),
@@ -280,6 +302,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                     pairId,
                     userId,
                     expectedRevision,
+                    pairId,
                 )
                 .run();
 
@@ -299,9 +322,13 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                     `UPDATE pair_test
                      SET submitted_at = ?, updated_at = ?, revision = revision + 1
                      WHERE pair_id = ? AND user_id = ? AND revision = ?
-                       AND submitted_at IS NULL`,
+                       AND submitted_at IS NULL
+                       AND NOT EXISTS (
+                           SELECT 1 FROM pair_participant_withdrawal
+                           WHERE pair_id = ?
+                       )`,
                 )
-                .bind(submittedAt, submittedAt, pairId, userId, expectedRevision);
+                .bind(submittedAt, submittedAt, pairId, userId, expectedRevision, pairId);
             const updatePair = invitationTokenHash
                 ? database
                       .prepare(
@@ -391,7 +418,11 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                          SET partner_user_id = ?, claimed_at = ?, updated_at = ?
                          WHERE invite_token_hash = ? AND partner_user_id IS NULL
                            AND claimed_at IS NULL
-                           AND creator_user_id <> ?`,
+                             AND creator_user_id <> ?
+                             AND NOT EXISTS (
+                                 SELECT 1 FROM pair_participant_withdrawal
+                                 WHERE pair_id = cofounder_pair.pair_id
+                             )`,
                     )
                     .bind(userId, claimedAt, claimedAt, tokenHash, userId),
                 database
@@ -438,6 +469,10 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                      WHERE pair_id = ? AND creator_user_id = ?
                        AND partner_user_id IS NULL
                        AND claimed_at IS NULL
+                       AND NOT EXISTS (
+                           SELECT 1 FROM pair_participant_withdrawal
+                           WHERE pair_id = cofounder_pair.pair_id
+                       )
                        AND EXISTS (
                            SELECT 1 FROM pair_test
                            WHERE pair_id = ? AND user_id = ?
@@ -465,6 +500,10 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                      WHERE pair_id = ? AND creator_user_id = ?
                        AND partner_user_id IS NULL
                        AND claimed_at IS NULL
+                       AND NOT EXISTS (
+                           SELECT 1 FROM pair_participant_withdrawal
+                           WHERE pair_id = cofounder_pair.pair_id
+                       )
                        AND EXISTS (
                            SELECT 1 FROM pair_test
                            WHERE pair_id = ? AND user_id = ?

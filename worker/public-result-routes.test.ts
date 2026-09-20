@@ -48,6 +48,7 @@ const harness = () => {
     const knownHashes = new Set<string>();
     const permissions = new Map<string, boolean>();
     let published = false;
+    let withdrawn = false;
     let publishCalls = 0;
 
     const view = (): PublicResult => ({
@@ -64,6 +65,7 @@ const harness = () => {
             knownHashes.add(input.slugHash);
             permissions.set(input.userId, input.showMyName);
             published = true;
+            withdrawn = false;
             return 'published';
         },
         async setNamePermission(input) {
@@ -74,6 +76,7 @@ const harness = () => {
         async unpublish(_pairId, userId) {
             if (!['creator', 'partner'].includes(userId) || !published) return false;
             published = false;
+            withdrawn = true;
             return true;
         },
         async getPairState(_pairId, userId) {
@@ -88,7 +91,9 @@ const harness = () => {
             if (!knownHashes.has(hash)) return null;
             return published && hash === activeHash
                 ? { status: 'published', result: view() }
-                : { status: 'unavailable' };
+                : withdrawn && hash === activeHash
+                  ? { status: 'withdrawn' }
+                  : { status: 'unavailable' };
         },
     };
     let nextId = 0;
@@ -203,11 +208,13 @@ describe('privacy-safe public results', () => {
                 )
             ).status,
         ).toBe(200);
-        expect((await test.request(`/api/public-results/${slug}`)).status).toBe(404);
+        const withdrawnApi = await test.request(`/api/public-results/${slug}`);
+        expect(withdrawnApi.status).toBe(410);
+        expect(await withdrawnApi.json()).toEqual({ status: 'withdrawn' });
         const tombstone = await test.request(`/r/${slug}`);
         const html = await tombstone.text();
         expect(tombstone.headers.get('x-robots-tag')).toBe('noindex, nofollow');
-        expect(html).toContain('Cofounder｜结果不可用');
+        expect(html).toContain('Cofounder｜Withdrawn Result');
         expect(html).not.toContain('Penn');
         expect(html).not.toContain('Jason');
     });

@@ -20,6 +20,9 @@ export interface AuthRuntime {
     handler(request: Request): Promise<Response>;
     getSession(headers: Headers): Promise<AuthSession | null>;
     sendSignInOtp(email: string, ipAddress: string): Promise<void>;
+    sendPrivacyOtp?(userId: string, email: string, ipAddress: string): Promise<void>;
+    verifyPrivacyOtp?(userId: string, otp: string): Promise<boolean>;
+    consumePrivacyAuthorization?(userId: string): Promise<boolean>;
 }
 
 export type AuthBindings = {
@@ -122,6 +125,9 @@ const sendOtpEmail = async (
     }
 };
 
+const privacyOtpHash = (secret: string, userId: string, otp: string) =>
+    digest(`${secret}:${userId}:${otp}`);
+
 export const createAuth = (environment: AuthBindings): AuthRuntime => {
     const auth = betterAuth({
         appName: 'Cofounder',
@@ -156,6 +162,13 @@ export const createAuth = (environment: AuthBindings): AuthRuntime => {
         ],
     });
 
+    const reserveOtpSend = async (email: string, ipAddress: string) => {
+        const normalizedEmail = email.trim().toLowerCase();
+        await reserveSend(environment.DB, 'otp_ip_limit', ipAddress);
+        await reserveSend(environment.DB, 'otp_email_limit', normalizedEmail);
+        return normalizedEmail;
+    };
+
     return {
         handler: (request) => auth.handler(request),
         getSession: async (headers) => {
@@ -171,17 +184,79 @@ export const createAuth = (environment: AuthBindings): AuthRuntime => {
             };
         },
         sendSignInOtp: async (email, ipAddress) => {
-            const normalizedEmail = email.trim().toLowerCase();
-            await reserveSend(environment.DB, 'otp_ip_limit', ipAddress);
-            await reserveSend(
-                environment.DB,
-                'otp_email_limit',
-                normalizedEmail,
-            );
+            const normalizedEmail = await reserveOtpSend(email, ipAddress);
             const otp = await auth.api.createVerificationOTP({
                 body: { email: normalizedEmail, type: 'sign-in' },
             });
             await sendOtpEmail(environment, normalizedEmail, otp);
+        },
+        sendPrivacyOtp: async (userId, email, ipAddress) => {
+            const normalizedEmail = await reserveOtpSend(email, ipAddress);
+            const random = crypto.getRandomValues(new Uint32Array(1))[0];
+            const otp = String(random % 1_000_000).padStart(6, '0');
+            await sendOtpEmail(environment, normalizedEmail, otp);
+            const now = Date.now();
+            await environment.DB.prepare(
+                `INSERT INTO privacy_action_authorization
+                    (user_id, otp_hash, expires_at, attempts_remaining,
+                     verified_at, consumed_at, sent_at)
+                 VALUES (?, ?, ?, ?, NULL, NULL, ?)
+                 ON CONFLICT (user_id) DO UPDATE SET
+                    otp_hash = excluded.otp_hash,
+                    expires_at = excluded.expires_at,
+                    attempts_remaining = excluded.attempts_remaining,
+                    verified_at = NULL,
+                    consumed_at = NULL,
+                    sent_at = excluded.sent_at`,
+            )
+                .bind(
+                    userId,
+                    await privacyOtpHash(environment.BETTER_AUTH_SECRET, userId, otp),
+                    now + OTP_EXPIRES_IN_SECONDS * 1000,
+                    OTP_ALLOWED_ATTEMPTS,
+                    now,
+                )
+                .run();
+        },
+        verifyPrivacyOtp: async (userId, otp) => {
+            if (!/^\d{6}$/.test(otp)) return false;
+            const now = Date.now();
+            const expectedHash = await privacyOtpHash(
+                environment.BETTER_AUTH_SECRET,
+                userId,
+                otp,
+            );
+            const verified = await environment.DB.prepare(
+                `UPDATE privacy_action_authorization
+                 SET verified_at = ?
+                 WHERE user_id = ? AND otp_hash = ? AND expires_at > ?
+                   AND attempts_remaining > 0 AND consumed_at IS NULL
+                 RETURNING user_id`,
+            )
+                .bind(now, userId, expectedHash, now)
+                .all<{ user_id: string }>();
+            if (verified.results.length === 1) return true;
+            await environment.DB.prepare(
+                `UPDATE privacy_action_authorization
+                 SET attempts_remaining = MAX(0, attempts_remaining - 1)
+                 WHERE user_id = ? AND expires_at > ? AND verified_at IS NULL`,
+            )
+                .bind(userId, now)
+                .run();
+            return false;
+        },
+        consumePrivacyAuthorization: async (userId) => {
+            const now = Date.now();
+            const consumed = await environment.DB.prepare(
+                `UPDATE privacy_action_authorization
+                 SET consumed_at = ?
+                 WHERE user_id = ? AND verified_at IS NOT NULL
+                   AND verified_at >= ? AND consumed_at IS NULL
+                 RETURNING user_id`,
+            )
+                .bind(now, userId, now - 5 * 60 * 1000)
+                .all<{ user_id: string }>();
+            return consumed.results.length === 1;
         },
     };
 };

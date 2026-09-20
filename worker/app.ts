@@ -11,6 +11,7 @@ import {
 import {
     createAuth,
     OtpRequestError,
+    OTP_EXPIRES_IN_SECONDS,
     type AuthBindings,
     type AuthRuntime,
 } from './auth';
@@ -38,6 +39,10 @@ import {
     type PublicResultRepository,
 } from './public-result-repository';
 import type { PublicResult } from './public-result-contract';
+import {
+    createPrivacyRepository,
+    type PrivacyRepository,
+} from './privacy-repository';
 
 export type GenerateReportMessage = {
     type: 'generate-report';
@@ -72,6 +77,7 @@ export type AppServices = {
     pairs(environment: Bindings): PairRepository;
     reports?(environment: Bindings): ReportRepository;
     publicResults?(environment: Bindings): PublicResultRepository;
+    privacy?(environment: Bindings): PrivacyRepository;
     enqueueReport?(
         environment: Bindings,
         message: GenerateReportMessage,
@@ -86,6 +92,7 @@ const defaultServices: AppServices = {
     pairs: (environment) => createPairRepository(environment.DB),
     reports: (environment) => createReportRepository(environment.DB),
     publicResults: (environment) => createPublicResultRepository(environment.DB),
+    privacy: (environment) => createPrivacyRepository(environment.DB),
     enqueueReport: async (environment, message) => {
         await environment.REPORT_QUEUE.send(message);
     },
@@ -137,13 +144,17 @@ const escapeHtml = (value: string) =>
             })[character]!,
     );
 
-const publicMetadata = (result: PublicResult | null) => {
+const publicMetadata = (result: PublicResult | null, withdrawn: boolean) => {
     const title = result
         ? `${result.names.creator} × ${result.names.partner}｜${result.archetype.title}`
-        : 'Cofounder｜结果不可用';
+        : withdrawn
+          ? 'Cofounder｜Withdrawn Result'
+          : 'Cofounder｜结果不可用';
     const description = result
         ? `${result.archetype.englishTitle}。${result.teamQuote}`
-        : '这份 Cofounder 公开结果已撤回或不可用。';
+        : withdrawn
+          ? '这份 Cofounder 公开结果已由参与者撤回。'
+          : '这份 Cofounder 公开结果不可用。';
     return [
         '<meta name="robots" content="noindex,nofollow" />',
         `<meta property="og:title" content="${escapeHtml(title)}" />`,
@@ -159,13 +170,14 @@ const publicMetadata = (result: PublicResult | null) => {
 const publicResultShell = async (
     assets: AssetBinding,
     result: PublicResult | null,
+    withdrawn = false,
 ) => {
     const shell = await fetchShell(assets, '/desktop/index.html');
     const html = await shell.text();
     return new Response(
         html
             .replace(/<title>.*?<\/title>/, '')
-            .replace('</head>', `${publicMetadata(result)}</head>`),
+            .replace('</head>', `${publicMetadata(result, withdrawn)}</head>`),
         {
             status: shell.status,
             headers: {
@@ -329,6 +341,116 @@ export const createApp = (services: AppServices = defaultServices) => {
             );
 
         return context.json({ consentState: 'current' });
+    });
+
+    app.get('/api/privacy/export', async (context) => {
+        const account = await getAccount(context);
+        if (!account) return context.json({ code: 'UNAUTHORIZED' }, 401);
+        if (!services.privacy) {
+            return context.json({ code: 'PRIVACY_UNAVAILABLE' }, 503);
+        }
+        const exportedAt = services.now().toISOString();
+        const data = await services
+            .privacy(context.env)
+            .exportData(account.session.user.id, exportedAt);
+        if (!data) return context.json({ code: 'ACCOUNT_NOT_FOUND' }, 404);
+        return new Response(JSON.stringify(data, null, 2), {
+            headers: {
+                'content-type': 'application/json; charset=UTF-8',
+                'content-disposition': `attachment; filename="cofounder-data-${exportedAt.slice(0, 10)}.json"`,
+                'cache-control': 'no-store',
+            },
+        });
+    });
+
+    app.post('/api/privacy/challenge', async (context) => {
+        const account = await getAccount(context);
+        if (!account) return context.json({ code: 'UNAUTHORIZED' }, 401);
+        const auth = services.auth(context.env);
+        if (!auth.sendPrivacyOtp) {
+            return context.json({ code: 'PRIVACY_UNAVAILABLE' }, 503);
+        }
+        try {
+            await auth.sendPrivacyOtp(
+                account.session.user.id,
+                account.session.user.email,
+                context.req.header('cf-connecting-ip') || 'local-or-unknown',
+            );
+            return context.json({ success: true, expiresIn: OTP_EXPIRES_IN_SECONDS });
+        } catch (error) {
+            if (error instanceof OtpRequestError) {
+                return context.json(
+                    { code: error.code, message: error.message },
+                    error.status,
+                );
+            }
+            throw error;
+        }
+    });
+
+    app.post('/api/privacy/authorize', async (context) => {
+        const account = await getAccount(context);
+        if (!account) return context.json({ code: 'UNAUTHORIZED' }, 401);
+        const body = (await context.req.json().catch(() => null)) as {
+            otp?: unknown;
+        } | null;
+        const auth = services.auth(context.env);
+        if (
+            typeof body?.otp !== 'string' ||
+            !auth.verifyPrivacyOtp ||
+            !(await auth.verifyPrivacyOtp(account.session.user.id, body.otp))
+        ) {
+            return context.json({ code: 'INVALID_OTP' }, 400);
+        }
+        return context.json({ authorized: true, validForSeconds: 5 * 60 });
+    });
+
+    const consumePrivacyAuthorization = async (
+        context: Parameters<MiddlewareHandler<AppEnvironment>>[0],
+    ) => {
+        const account = await getAccount(context);
+        if (!account) return { error: context.json({ code: 'UNAUTHORIZED' }, 401) };
+        const consume = services.auth(context.env).consumePrivacyAuthorization;
+        if (!consume || !(await consume(account.session.user.id))) {
+            return {
+                error: context.json({ code: 'FRESH_OTP_REQUIRED' }, 428),
+            };
+        }
+        return { account };
+    };
+
+    app.delete('/api/privacy/pairs/:pairId', async (context) => {
+        const authorization = await consumePrivacyAuthorization(context);
+        if ('error' in authorization) return authorization.error;
+        if (!services.privacy) {
+            return context.json({ code: 'PRIVACY_UNAVAILABLE' }, 503);
+        }
+        const withdrawn = await services
+            .privacy(context.env)
+            .withdrawFromPair(
+                context.req.param('pairId'),
+                authorization.account.session.user.id,
+                services.now().toISOString(),
+            );
+        return withdrawn
+            ? context.json({ withdrawn: true })
+            : context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+    });
+
+    app.delete('/api/privacy/account', async (context) => {
+        const authorization = await consumePrivacyAuthorization(context);
+        if ('error' in authorization) return authorization.error;
+        if (!services.privacy) {
+            return context.json({ code: 'PRIVACY_UNAVAILABLE' }, 503);
+        }
+        const deleted = await services.privacy(context.env).deleteAccount({
+            userId: authorization.account.session.user.id,
+            deletedAt: services.now().toISOString(),
+            tombstoneEmail: `deleted+${services.id()}@invalid.local`,
+        });
+        return deleted
+            ? context.json({ deleted: true })
+            : context.json({ code: 'ACCOUNT_NOT_FOUND' }, 404);
     });
 
     const requireCurrentConsent: MiddlewareHandler<AppEnvironment> = async (
@@ -730,8 +852,9 @@ export const createApp = (services: AppServices = defaultServices) => {
         const lookup = await services
             .publicResults(context.env)
             .findBySlugHash(await hashInvitationToken(slug));
-        return lookup?.status === 'published'
-            ? context.json(lookup.result)
+        if (lookup?.status === 'published') return context.json(lookup.result);
+        return lookup?.status === 'withdrawn'
+            ? context.json({ status: 'withdrawn' }, 410)
             : context.json({ status: 'unavailable' }, 404);
     });
 
@@ -793,6 +916,7 @@ export const createApp = (services: AppServices = defaultServices) => {
         return publicResultShell(
             context.env.ASSETS,
             lookup?.status === 'published' ? lookup.result : null,
+            lookup?.status === 'withdrawn',
         );
     });
 

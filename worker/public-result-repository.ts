@@ -4,6 +4,7 @@ import type { PublicResult } from './public-result-contract';
 
 export type PublicResultLookup =
     | { status: 'published'; result: PublicResult }
+    | { status: 'withdrawn' }
     | { status: 'unavailable' }
     | null;
 
@@ -44,9 +45,9 @@ type PublicResultRow = {
 };
 
 const publicResultFromRow = (row: PublicResultRow): PublicResultLookup => {
+    if (row.unpublished_at) return { status: 'withdrawn' };
     if (
         row.active !== 1 ||
-        row.unpublished_at ||
         !row.report_json ||
         !row.published_at
     ) {
@@ -253,7 +254,7 @@ export const createPublicResultRepository = (
                  JOIN cofounder_pair pair ON pair.pair_id = result.pair_id
                  JOIN user creator ON creator.id = pair.creator_user_id
                  JOIN user partner ON partner.id = pair.partner_user_id
-                 JOIN pair_result ON pair_result.pair_id = pair.pair_id
+                 LEFT JOIN pair_result ON pair_result.pair_id = pair.pair_id
                  LEFT JOIN public_name_permission creator_permission
                    ON creator_permission.pair_id = pair.pair_id
                   AND creator_permission.user_id = pair.creator_user_id
