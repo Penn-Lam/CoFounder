@@ -27,6 +27,16 @@ import {
     validateProfile,
 } from './questionnaire';
 import { contentLibraryV1 } from './content-library';
+import { processPairReport } from './report-processor';
+import {
+    createReportRepository,
+    type ReportRepository,
+} from './report-repository';
+
+export type GenerateReportMessage = {
+    type: 'generate-report';
+    pairId: string;
+};
 
 type AssetBinding = {
     fetch(input: Request | URL | string): Promise<Response>;
@@ -45,12 +55,18 @@ type MediaBinding = {
 export type Bindings = {
     ASSETS: AssetBinding;
     MEDIA: MediaBinding;
+    REPORT_QUEUE: Queue<GenerateReportMessage>;
 } & AuthBindings;
 
 export type AppServices = {
     auth(environment: Bindings): AuthRuntime;
     accounts(environment: Bindings): AccountRepository;
     pairs(environment: Bindings): PairRepository;
+    reports?(environment: Bindings): ReportRepository;
+    enqueueReport?(
+        environment: Bindings,
+        message: GenerateReportMessage,
+    ): Promise<void>;
     id(): string;
     now(): Date;
 };
@@ -59,6 +75,10 @@ const defaultServices: AppServices = {
     auth: createAuth,
     accounts: (environment) => createAccountRepository(environment.DB),
     pairs: (environment) => createPairRepository(environment.DB),
+    reports: (environment) => createReportRepository(environment.DB),
+    enqueueReport: async (environment, message) => {
+        await environment.REPORT_QUEUE.send(message);
+    },
     id: () => crypto.randomUUID(),
     now: () => new Date(),
 };
@@ -86,8 +106,42 @@ const hashInvitationToken = async (token: string) => {
     ).join('');
 };
 
+const dispatchReportJobs = async (
+    repository: ReportRepository,
+    enqueue: (message: GenerateReportMessage) => Promise<void>,
+    dispatchedAt: string,
+    pairId?: string,
+) => {
+    const retryBefore = new Date(
+        new Date(dispatchedAt).getTime() - 5 * 60 * 1000,
+    ).toISOString();
+    const pending = await repository.getPendingJobs(
+        pairId ? 1 : 25,
+        retryBefore,
+        pairId,
+    );
+    for (const pendingPairId of pending) {
+        await enqueue({ type: 'generate-report', pairId: pendingPairId });
+        await repository.markJobDispatched(pendingPairId, dispatchedAt);
+    }
+};
+
 export const createApp = (services: AppServices = defaultServices) => {
     const app = new Hono<AppEnvironment>();
+
+    const tryDispatchReport = async (environment: Bindings, pairId: string) => {
+        if (!services.reports || !services.enqueueReport) return;
+        try {
+            await dispatchReportJobs(
+                services.reports(environment),
+                (message) => services.enqueueReport!(environment, message),
+                services.now().toISOString(),
+                pairId,
+            );
+        } catch {
+            console.error('Report job remains pending for scheduled retry', { pairId });
+        }
+    };
 
     const getAccount = async (context: {
         env: Bindings;
@@ -227,6 +281,8 @@ export const createApp = (services: AppServices = defaultServices) => {
         pairId: pair.pairId,
         role: pair.role,
         lifecycle: pair.lifecycle,
+        reportStatus: pair.reportStatus,
+        notificationReady: pair.reportStatus === 'ready',
         partnerStatus: pair.partnerStatus,
         invitationStatus: pair.invitationStatus,
         questionSetVersion: pair.questionSetVersion,
@@ -429,7 +485,10 @@ export const createApp = (services: AppServices = defaultServices) => {
         const userId = context.get('account').session.user.id;
         const pair = await repository.get(pairId, userId);
         if (!pair) return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
-        if (pair.submittedAt) return context.json({ code: 'PAIR_TEST_SEALED' }, 409);
+        if (pair.submittedAt) {
+            await tryDispatchReport(context.env, pairId);
+            return context.json({ code: 'PAIR_TEST_SEALED' }, 409);
+        }
         const questionSet = getQuestionnaireVersion(pair.questionSetVersion);
         if (!questionSet) {
             return context.json({ code: 'QUESTION_SET_NOT_FOUND' }, 409);
@@ -460,6 +519,8 @@ export const createApp = (services: AppServices = defaultServices) => {
         );
         const error = writeError(context, result);
 
+        if (!error) await tryDispatchReport(context.env, pairId);
+
         return (
             error ||
             context.json({
@@ -469,6 +530,32 @@ export const createApp = (services: AppServices = defaultServices) => {
                     : {}),
             })
         );
+    });
+
+    app.get('/api/pairs/:pairId/report', async (context) => {
+        const pairId = context.req.param('pairId');
+        const pair = await services
+            .pairs(context.env)
+            .get(pairId, context.get('account').session.user.id);
+        if (!pair) return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        if (pair.reportStatus !== 'ready') {
+            return context.json({
+                pairId,
+                status: pair.reportStatus,
+                notificationReady: false,
+            });
+        }
+
+        const result = services.reports
+            ? await services.reports(context.env).getResult(pairId)
+            : null;
+        if (!result) return context.json({ code: 'REPORT_NOT_FOUND' }, 404);
+        return context.json({
+            pairId,
+            status: 'ready',
+            notificationReady: true,
+            report: result.report,
+        });
     });
 
     app.post('/api/pairs/:pairId/invitation', async (context) => {
@@ -544,4 +631,38 @@ export const createApp = (services: AppServices = defaultServices) => {
     return app;
 };
 
-export default createApp();
+export const app = createApp();
+
+const worker: ExportedHandler<Bindings, GenerateReportMessage> = {
+    fetch: (request, environment, executionContext) =>
+        app.fetch(request, environment, executionContext),
+    async queue(batch, environment) {
+        const repository = createReportRepository(environment.DB);
+        for (const message of batch.messages) {
+            if (message.body.type !== 'generate-report') {
+                message.ack();
+                continue;
+            }
+            try {
+                await processPairReport(repository, message.body.pairId);
+                await repository.markJobCompleted(
+                    message.body.pairId,
+                    new Date().toISOString(),
+                );
+                message.ack();
+            } catch {
+                message.retry();
+            }
+        }
+    },
+    async scheduled(_controller, environment) {
+        const repository = createReportRepository(environment.DB);
+        await dispatchReportJobs(
+            repository,
+            (message) => environment.REPORT_QUEUE.send(message).then(() => undefined),
+            new Date().toISOString(),
+        );
+    },
+};
+
+export default worker;

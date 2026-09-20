@@ -6,6 +6,7 @@ import {
     type PairTestRecord,
     type PairTestState,
 } from './pair-repository';
+import type { StoredPairResult } from './report-repository';
 
 const currentConsents = Object.entries(CURRENT_CONSENTS).map(([type, version]) => ({
     type,
@@ -44,6 +45,7 @@ type StoredPair = {
     creatorId: string;
     partnerId: string | null;
     inviteHash: string | null;
+    reportStatus: 'pending' | 'generating' | 'ready';
     tests: Map<string, StoredTest>;
 };
 
@@ -59,6 +61,10 @@ const createHarness = () => {
     let signedIn = true;
     let consents = currentConsents;
     let nextId = 1;
+    const queuedReports: string[] = [];
+    let reportResult: StoredPairResult | null = null;
+    let reportJobPending = false;
+    let enqueueFailure = false;
 
     const toRecord = (pair: StoredPair, userId: string): PairTestRecord => {
         const own = pair.tests.get(userId)!;
@@ -73,13 +79,18 @@ const createHarness = () => {
             userId,
             role,
             lifecycle:
-                role === 'creator' && !own.submittedAt
-                    ? 'creator_draft'
-                    : !pair.partnerId || !partnerStarted
-                      ? 'waiting_partner'
-                      : partner?.submittedAt
-                        ? 'pair_complete'
-                        : 'partner_in_progress',
+                pair.reportStatus === 'ready'
+                    ? 'report_ready'
+                    : pair.reportStatus === 'generating'
+                      ? 'report_generating'
+                      : role === 'creator' && !own.submittedAt
+                        ? 'creator_draft'
+                        : !pair.partnerId || !partnerStarted
+                          ? 'waiting_partner'
+                          : partner?.submittedAt
+                            ? 'pair_complete'
+                            : 'partner_in_progress',
+            reportStatus: pair.reportStatus,
             partnerStatus:
                 role === 'creator' && pair.partnerId
                     ? partnerStarted
@@ -104,6 +115,7 @@ const createHarness = () => {
                 creatorId: userId,
                 partnerId: null,
                 inviteHash: null,
+                reportStatus: 'pending',
                 tests: new Map([
                     [
                         userId,
@@ -151,6 +163,13 @@ const createHarness = () => {
             test.updatedAt = submittedAt;
             test.revision += 1;
             if (userId === pair.creatorId && inviteHash) pair.inviteHash = inviteHash;
+            if (
+                pair.partnerId &&
+                [...pair.tests.values()].every(({ submittedAt }) => submittedAt)
+            ) {
+                pair.reportStatus = 'generating';
+                reportJobPending = true;
+            }
             return toRecord(pair, userId);
         },
         async findInvitation(tokenHash) {
@@ -224,6 +243,21 @@ const createHarness = () => {
             renewConsents: async () => undefined,
         }),
         pairs: () => repository,
+        reports: () => ({
+            getResult: async () => reportResult,
+            getInput: async () => null,
+            commitResult: async (result) => result,
+            getPendingJobs: async (_limit, _retryBefore, pairId) =>
+                reportJobPending && pairId ? [pairId] : [],
+            markJobDispatched: async () => {
+                reportJobPending = false;
+            },
+            markJobCompleted: async () => undefined,
+        }),
+        enqueueReport: async (_environment, message) => {
+            if (enqueueFailure) throw new Error('queue unavailable');
+            queuedReports.push(message.pairId);
+        },
         id: () => `generated-${nextId++}`,
         now: () => new Date('2026-09-20T12:00:00.000Z'),
     };
@@ -237,7 +271,15 @@ const createHarness = () => {
     return {
         loginAs,
         pairs,
+        queuedReports,
         request,
+        setReport(result: StoredPairResult) {
+            reportResult = result;
+            pairs.get(result.pairId)!.reportStatus = 'ready';
+        },
+        setEnqueueFailure(value: boolean) {
+            enqueueFailure = value;
+        },
         setSignedIn(value: boolean) {
             signedIn = value;
         },
@@ -401,8 +443,88 @@ describe('Pair invitation lifecycle', () => {
 
         harness.loginAs('creator', 'Penn');
         const completed = await (await harness.request(`/api/pairs/${pair.pairId}/test`)).json();
-        expect(completed.lifecycle).toBe('pair_complete');
+        expect(completed.lifecycle).toBe('report_generating');
         expect(JSON.stringify(completed)).not.toContain('"core:Q1":"B"');
+    });
+
+    it('enqueues completion once and gives both Participants the same report', async () => {
+        const harness = createHarness();
+        const { pair, body } = await sealCreator(harness);
+        const token = body.invitation.path.split('/').pop();
+        harness.loginAs('partner', 'Jason');
+        await harness.request(
+            `/api/invitations/${token}/claim`,
+            postJson({ accepted: true }),
+        );
+        const partnerTest = pair.tests.get('partner')!;
+        partnerTest.state = { profile: completeProfile, answers: completeAnswers() };
+
+        const completed = await harness.request(
+            `/api/pairs/${pair.pairId}/submit`,
+            postJson({ revision: partnerTest.revision }),
+        );
+        expect(completed.status).toBe(200);
+        expect(harness.queuedReports).toEqual([pair.pairId]);
+
+        const duplicate = await harness.request(
+            `/api/pairs/${pair.pairId}/submit`,
+            postJson({ revision: partnerTest.revision + 1 }),
+        );
+        expect(duplicate.status).toBe(409);
+        expect(harness.queuedReports).toEqual([pair.pairId]);
+
+        harness.setReport({
+            pairId: pair.pairId,
+            questionSetVersion: 'cofounder-questionnaire-v1',
+            rulesVersion: 'cofounder-rules-v1',
+            contentVersion: 'cofounder-content-v1',
+            report: { immutable: 'same-for-both' },
+            createdAt: '2026-09-20T12:02:00.000Z',
+        } as unknown as StoredPairResult);
+
+        const partnerReport = await (
+            await harness.request(`/api/pairs/${pair.pairId}/report`)
+        ).json();
+        harness.loginAs('creator', 'Penn');
+        const creatorReport = await (
+            await harness.request(`/api/pairs/${pair.pairId}/report`)
+        ).json();
+        expect(creatorReport.report).toEqual(partnerReport.report);
+
+        harness.loginAs('outsider', 'Ada');
+        expect(
+            (await harness.request(`/api/pairs/${pair.pairId}/report`)).status,
+        ).toBe(404);
+    });
+
+    it('keeps a failed Queue send in the outbox for a safe retry', async () => {
+        const harness = createHarness();
+        const { pair, body } = await sealCreator(harness);
+        const token = body.invitation.path.split('/').pop();
+        harness.loginAs('partner', 'Jason');
+        await harness.request(
+            `/api/invitations/${token}/claim`,
+            postJson({ accepted: true }),
+        );
+        const partnerTest = pair.tests.get('partner')!;
+        partnerTest.state = { profile: completeProfile, answers: completeAnswers() };
+        harness.setEnqueueFailure(true);
+
+        const completed = await harness.request(
+            `/api/pairs/${pair.pairId}/submit`,
+            postJson({ revision: partnerTest.revision }),
+        );
+        expect(completed.status).toBe(200);
+        expect((await completed.json()).reportStatus).toBe('generating');
+        expect(harness.queuedReports).toEqual([]);
+
+        harness.setEnqueueFailure(false);
+        const retry = await harness.request(
+            `/api/pairs/${pair.pairId}/submit`,
+            postJson({ revision: partnerTest.revision + 1 }),
+        );
+        expect(retry.status).toBe(409);
+        expect(harness.queuedReports).toEqual([pair.pairId]);
     });
 
     it('invalidates reset and cancelled links and locks replacement after claim', async () => {

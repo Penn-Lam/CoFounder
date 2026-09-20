@@ -224,12 +224,63 @@
 .pair-question,
 .pair-review,
 .pair-complete,
-.invite-claim {
+.invite-claim,
+.private-report {
     display: flex;
     width: min(100%, 860px);
     margin: 0 auto;
     flex-direction: column;
     gap: 18px;
+}
+
+.private-report {
+    display: block;
+}
+
+.private-report section,
+.private-report article,
+.private-report header,
+.private-report footer {
+    display: block;
+}
+
+.report-ready-notice {
+    width: fit-content;
+    padding: 5px 9px;
+    background: #000080;
+    color: #ffffff;
+    font-family: Terminal, monospace;
+}
+
+.report-secondary {
+    color: #7a5a00;
+    font-family: Terminal, monospace;
+}
+
+.report-summary-grid,
+.report-dimensions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.report-summary-grid > *,
+.report-dimensions article {
+    padding: 14px;
+    border: 2px solid #102a2a;
+    background: #ffffff;
+}
+
+.report-dimensions article > * {
+    display: block;
+    margin: 5px 0;
+}
+
+.private-report footer {
+    margin: 24px 0;
+    padding: 12px;
+    border-top: 3px double #102a2a;
 }
 
 .pair-question {

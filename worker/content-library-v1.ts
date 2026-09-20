@@ -241,6 +241,72 @@ export const contentLibraryV1 = {
             ['前台驱动', '擅长通过表达、关系和市场推动公司。'],
         ],
     } as Record<Dimension, Array<[string, string]>>,
+    reportVocabulary: {
+        id: 'report.vocabulary',
+        dimensions: {
+            ambition: '长期目标',
+            risk: '风险选择',
+            money: '资金观念',
+            product: '产品判断',
+            governance: '治理方式',
+            conflict: '冲突处理',
+            operating: '工作节奏',
+            external: '对外角色',
+        } as Record<Dimension, string>,
+        relations: {
+            aligned: '方向一致',
+            productive_tension: '有效互补',
+            structural_difference: '结构性差异',
+        },
+        severities: {
+            moderate: '需要留意',
+            high: '优先讨论',
+            critical: '必须先谈清楚',
+        },
+        flags: {
+            'dual-sole-authority': {
+                title: '最终决定权重叠',
+                copy: '双方都把最终决定权放在自己一侧，关键决策可能出现两套指挥。',
+            },
+            'safe-ambition-gap': {
+                title: '长期目标距离较大',
+                copy: '双方对公司最终要走多远的判断不同，需要先谈清成功的定义。',
+            },
+            'risk-gap': {
+                title: '风险承受差异较大',
+                copy: '面对同一个窗口，双方可能对下注速度与可承受损失有明显不同。',
+            },
+            'money-gap': {
+                title: '资金使用逻辑不同',
+                copy: '双方对现金纪律与增长投入的优先顺序存在明显差异。',
+            },
+            'product-large-structural-difference': {
+                title: '产品判断方式不同',
+                copy: '双方依赖的产品证据与决策方式不同，容易在关键取舍上持续拉扯。',
+            },
+            'conflict-latency-gap': {
+                title: '冲突处理时差较大',
+                copy: '一方希望尽快处理，另一方需要更长缓冲，沉默和追问都可能被误读。',
+            },
+            'operating-gap': {
+                title: '工作节奏差异较大',
+                copy: '双方对临时变化、规划和执行节奏的偏好不同，需要明确协作接口。',
+            },
+        },
+        sensitiveTopics: {
+            'acquisition-intent': '收购选择',
+            'equity-adjustment': '股权调整',
+            'commitment-horizon': '长期投入',
+            'ethics-boundary': '业务伦理边界',
+            'ceo-removal': 'CEO 更换机制',
+        },
+        sensitiveStates: {
+            aligned: '原则接近',
+            conflict: '存在原则冲突',
+            unresolved: '至少一方尚未形成明确答案',
+        },
+        approval,
+    },
     reportModules: [
         {
             id: 'report.team-portrait',

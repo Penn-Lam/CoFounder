@@ -1,5 +1,7 @@
 import type { PairProfile } from './questionnaire';
 
+export type ReportStatus = 'pending' | 'generating' | 'ready';
+
 export type PairTestState = {
     profile: PairProfile | null;
     answers: Record<string, string>;
@@ -13,7 +15,10 @@ export type PairTestRecord = {
         | 'creator_draft'
         | 'waiting_partner'
         | 'partner_in_progress'
-        | 'pair_complete';
+        | 'pair_complete'
+        | 'report_generating'
+        | 'report_ready';
+    reportStatus: ReportStatus;
     partnerStatus: 'not_started' | 'started' | null;
     invitationStatus: 'unavailable' | 'active' | 'cancelled' | 'claimed';
     questionSetVersion: string;
@@ -99,6 +104,7 @@ type PairRow = {
     claimed_at: string | null;
     partner_state_json: string | null;
     partner_submitted_at: string | null;
+    report_status: ReportStatus;
 };
 
 const toRecord = (row: PairRow): PairTestRecord => {
@@ -110,19 +116,24 @@ const toRecord = (row: PairRow): PairTestRecord => {
         partnerState &&
             (partnerState.profile || Object.keys(partnerState.answers).length > 0),
     );
-    const lifecycle = !row.submitted_at && role === 'creator'
-        ? 'creator_draft'
-        : !row.partner_user_id || !partnerStarted
-          ? 'waiting_partner'
-          : row.partner_submitted_at
-            ? 'pair_complete'
-            : 'partner_in_progress';
+    const lifecycle = row.report_status === 'ready'
+        ? 'report_ready'
+        : row.report_status === 'generating'
+          ? 'report_generating'
+          : !row.submitted_at && role === 'creator'
+            ? 'creator_draft'
+            : !row.partner_user_id || !partnerStarted
+              ? 'waiting_partner'
+              : row.partner_submitted_at
+                ? 'pair_complete'
+                : 'partner_in_progress';
 
     return {
         pairId: row.pair_id,
         userId: row.user_id,
         role,
         lifecycle,
+        reportStatus: row.report_status,
         partnerStatus:
             role === 'creator' && row.partner_user_id
                 ? partnerStarted
@@ -148,7 +159,7 @@ const toRecord = (row: PairRow): PairTestRecord => {
 const pairSelect = `SELECT pt.pair_id, pt.user_id, pt.question_set_version, pt.revision,
                             pt.state_json, pt.created_at, pt.updated_at, pt.submitted_at,
                             pair.creator_user_id, pair.partner_user_id,
-                            pair.invite_token_hash, pair.claimed_at,
+                            pair.invite_token_hash, pair.claimed_at, pair.report_status,
                             partner_test.state_json AS partner_state_json,
                             partner_test.submitted_at AS partner_submitted_at
                      FROM pair_test pt
@@ -337,7 +348,31 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                           expectedRevision + 1,
                           submittedAt,
                       );
-            const results = await database.batch([updateTest, updatePair]);
+            const beginReport = database
+                .prepare(
+                    `UPDATE cofounder_pair
+                     SET report_status = 'generating', report_generating_at = ?, updated_at = ?
+                     WHERE pair_id = ? AND report_status = 'pending'
+                       AND partner_user_id IS NOT NULL
+                       AND (SELECT COUNT(*) FROM pair_test
+                            WHERE pair_id = ? AND submitted_at IS NOT NULL) = 2
+                       AND (SELECT COUNT(DISTINCT question_set_version) FROM pair_test
+                            WHERE pair_id = ?) = 1`,
+                )
+                .bind(submittedAt, submittedAt, pairId, pairId, pairId);
+            const enqueueReport = database
+                .prepare(
+                    `INSERT OR IGNORE INTO report_job (pair_id, created_at)
+                     SELECT pair_id, ? FROM cofounder_pair
+                     WHERE pair_id = ? AND report_status = 'generating'`,
+                )
+                .bind(submittedAt, pairId);
+            const results = await database.batch([
+                updateTest,
+                updatePair,
+                beginReport,
+                enqueueReport,
+            ]);
 
             return results[0].meta.changes === 1
                 ? (await get(pairId, userId))!

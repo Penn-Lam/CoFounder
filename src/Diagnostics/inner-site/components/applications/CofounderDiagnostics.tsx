@@ -104,7 +104,11 @@ type PairState = {
         | 'creator_draft'
         | 'waiting_partner'
         | 'partner_in_progress'
-        | 'pair_complete';
+        | 'pair_complete'
+        | 'report_generating'
+        | 'report_ready';
+    reportStatus: 'pending' | 'generating' | 'ready';
+    notificationReady: boolean;
     partnerStatus: 'not_started' | 'started' | null;
     invitationStatus: 'unavailable' | 'active' | 'cancelled' | 'claimed';
     questionSetVersion: string;
@@ -118,6 +122,53 @@ type InvitationPreview = { creatorDisplayName: string };
 type TestQuestion = Question & {
     section: 'core' | 'mirror' | 'red-line';
     answerKey: string;
+};
+type PrivateReport = {
+    portrait: { title: string; englishTitle: string; copy: string };
+    alignment: { dimension: string; title: string; copy: string };
+    complement: { dimension: string; title: string; copy: string };
+    sections: Record<
+        'topDifference' | 'dimensions' | 'mirror' | 'flags' | 'prompts',
+        { title: string; copy: string }
+    >;
+    topRisk: { title: string; copy: string };
+    privatePattern: { title: string; copy: string; action: string };
+    dimensions: Array<{
+        dimension: string;
+        label: string;
+        bandContent: {
+            a: { label: string; copy: string };
+            b: { label: string; copy: string };
+        };
+        match: number;
+        relationLabel: string;
+    }>;
+    mirror: {
+        aPredictsB: { exact: number; near: number; opposite: number };
+        bPredictsA: { exact: number; near: number; opposite: number };
+    };
+    conflictFlags: Array<{
+        id: string;
+        title: string;
+        copy: string;
+        severityLabel: string;
+        dimensionLabel: string;
+    }>;
+    sensitiveContext: {
+        signals: Array<{
+            topic: string;
+            topicLabel: string;
+            stateLabel: string;
+            severityLabel: string | null;
+        }>;
+    };
+    prompts: Array<{ id: string; copy: string }>;
+    disclaimer: { copy: string };
+};
+type ReportResponse = {
+    status: 'pending' | 'generating' | 'ready';
+    notificationReady: boolean;
+    report?: PrivateReport;
 };
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -547,6 +598,7 @@ const PairTestFlow: React.FC<{
         initialPair.invitation?.path || '',
     );
     const [copyStatus, setCopyStatus] = useState('');
+    const [report, setReport] = useState<PrivateReport | null>(null);
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     const questions: TestQuestion[] = [
@@ -580,6 +632,38 @@ const PairTestFlow: React.FC<{
         document.querySelector('.diagnostics-content')?.scrollTo(0, 0);
         headingRef.current?.focus();
     }, [questionIndex, review]);
+
+    useEffect(() => {
+        if (pair.reportStatus === 'pending' || pair.status !== 'submitted') return;
+        let active = true;
+        const poll = async () => {
+            try {
+                const response = await request<ReportResponse>(
+                    `/api/pairs/${pair.pairId}/report`,
+                );
+                if (!active) return;
+                if (response.report) setReport(response.report);
+                if (response.status !== pair.reportStatus) await reload();
+            } catch (caught) {
+                if (active) {
+                    setError(
+                        caught instanceof Error ? caught.message : '报告载入失败。',
+                    );
+                }
+            }
+        };
+        poll();
+        if (pair.reportStatus === 'ready') {
+            return () => {
+                active = false;
+            };
+        }
+        const timer = window.setInterval(poll, 3000);
+        return () => {
+            active = false;
+            window.clearInterval(timer);
+        };
+    }, [pair.pairId, pair.reportStatus, pair.status]);
 
     const saveProfile = async (event: FormEvent) => {
         event.preventDefault();
@@ -687,12 +771,121 @@ const PairTestFlow: React.FC<{
     };
 
     if (pair.status === 'submitted') {
-        if (pair.lifecycle === 'pair_complete') {
+        if (pair.reportStatus === 'ready' && report) {
+            const ownKey = pair.role === 'creator' ? 'a' : 'b';
+            const partnerKey = ownKey === 'a' ? 'b' : 'a';
+            const ownMirror = ownKey === 'a'
+                ? report.mirror.aPredictsB
+                : report.mirror.bPredictsA;
+            const partnerMirror = ownKey === 'a'
+                ? report.mirror.bPredictsA
+                : report.mirror.aPredictsB;
             return (
-                <section className="pair-complete" aria-live="polite">
-                    <h1>双方都完成了。</h1>
-                    <p>你们的答案已经分别封存，任何一方都无法查看对方的逐题选择。</p>
-                    <p>Pair 已经可以进入规则计算与报告生成阶段。</p>
+                <article className="private-report" aria-live="polite">
+                    <header>
+                        <p className="report-ready-notice">报告已就绪</p>
+                        <h1>{report.portrait.title}</h1>
+                        <p className="report-secondary">{report.portrait.englishTitle}</p>
+                        <p>{report.portrait.copy}</p>
+                    </header>
+                    <div className="report-summary-grid">
+                        <section>
+                            <h2>{report.alignment.title}</h2>
+                            <b>{report.dimensions.find(({ dimension }) => dimension === report.alignment.dimension)?.label}</b>
+                            <p>{report.alignment.copy}</p>
+                        </section>
+                        <section>
+                            <h2>{report.complement.title}</h2>
+                            <b>{report.dimensions.find(({ dimension }) => dimension === report.complement.dimension)?.label}</b>
+                            <p>{report.complement.copy}</p>
+                        </section>
+                        <section>
+                            <h2>{report.sections.topDifference.title}</h2>
+                            <b>{report.topRisk.title}</b>
+                            <p>{report.topRisk.copy}</p>
+                            <h3>{report.privatePattern.title}</h3>
+                            <p>{report.privatePattern.copy}</p>
+                            <p>{report.privatePattern.action}</p>
+                        </section>
+                    </div>
+                    <section>
+                        <h2>{report.sections.dimensions.title}</h2>
+                        <p>{report.sections.dimensions.copy}</p>
+                        <div className="report-dimensions">
+                            {report.dimensions.map((dimension) => (
+                                <article key={dimension.dimension}>
+                                    <h3>{dimension.label}</h3>
+                                    <p><b>我：</b>{dimension.bandContent[ownKey].label}</p>
+                                    <p><b>TA：</b>{dimension.bandContent[partnerKey].label}</p>
+                                    <strong>维度匹配 {dimension.match}</strong>
+                                    <small>{dimension.relationLabel}</small>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                    <section>
+                        <h2>{report.sections.mirror.title}</h2>
+                        <p>{report.sections.mirror.copy}</p>
+                        <div className="report-summary-grid">
+                            <article>
+                                <h3>我对 TA 的预测</h3>
+                                <p>准确 {ownMirror.exact} · 接近 {ownMirror.near} · 相反 {ownMirror.opposite}</p>
+                            </article>
+                            <article>
+                                <h3>TA 对我的预测</h3>
+                                <p>准确 {partnerMirror.exact} · 接近 {partnerMirror.near} · 相反 {partnerMirror.opposite}</p>
+                            </article>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>{report.sections.flags.title}</h2>
+                        <p>{report.sections.flags.copy}</p>
+                        {report.conflictFlags.length === 0 ? (
+                            <p>没有触发普通冲突信号。</p>
+                        ) : (
+                            <ul>
+                                {report.conflictFlags.map((flag) => (
+                                    <li key={flag.id}>
+                                        <b>{flag.title}</b> · {flag.dimensionLabel} · {flag.severityLabel}
+                                        <p>{flag.copy}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <h3>敏感话题（不归因）</h3>
+                        <p>以下只保留 Pair 层面的状态，不指出任何答案属于谁。</p>
+                        <ul>
+                            {report.sensitiveContext.signals.map((signal) => (
+                                <li key={signal.topic}>
+                                    {signal.topicLabel} · {signal.stateLabel}
+                                    {signal.severityLabel ? ` · ${signal.severityLabel}` : ''}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                    <section>
+                        <h2>{report.sections.prompts.title}</h2>
+                        <p>{report.sections.prompts.copy}</p>
+                        <ol>
+                            {report.prompts.map((prompt) => (
+                                <li key={prompt.id}>{prompt.copy}</li>
+                            ))}
+                        </ol>
+                    </section>
+                    <footer><p>{report.disclaimer.copy}</p></footer>
+                    <button type="button" onClick={onExit}>返回首页</button>
+                </article>
+            );
+        }
+
+        if (pair.reportStatus !== 'pending' || pair.lifecycle === 'pair_complete') {
+            return (
+                <section className="pair-complete report-generating" aria-live="polite">
+                    <h1>正在生成报告</h1>
+                    <p>双方回答已封存。系统正在按固定规则组装报告，请稍后返回。</p>
+                    <p>此页面会自动刷新；报告就绪后会显示通知状态。</p>
+                    {error && <div className="pair-save-error" role="alert">{error}</div>}
+                    <button type="button" onClick={reload} disabled={busy}>立即刷新</button>
                     <button type="button" onClick={onExit}>返回首页</button>
                 </section>
             );
@@ -1136,10 +1329,14 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     };
 
     const activeCreatedPairs = activePairs.filter(
-        (pair) => pair.role === 'creator' && pair.lifecycle !== 'pair_complete',
+        (pair) =>
+            pair.role === 'creator' &&
+            !['pair_complete', 'report_generating', 'report_ready'].includes(pair.lifecycle),
     ).length;
     const pairStatus = (pair: PairState) => {
-        if (pair.lifecycle === 'pair_complete') return '双方已完成';
+        if (pair.reportStatus === 'ready') return '报告已就绪';
+        if (pair.reportStatus === 'generating') return '正在生成报告';
+        if (pair.lifecycle === 'pair_complete') return '报告等待处理中';
         if (pair.lifecycle === 'partner_in_progress') return 'TA 已经开始测试';
         if (pair.status === 'submitted') {
             return pair.invitationStatus === 'claimed' ? 'TA 尚未开始测试' : '等待邀请';

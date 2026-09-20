@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import app, { type Bindings } from './app';
+import { app, type Bindings } from './app';
 
 const garageHtml = '<html><title>Garage</title></html>';
 const desktopHtml = '<html><title>Cofounder Diagnostics</title></html>';

@@ -31,6 +31,7 @@ const REQUIRED_COMMON_COPY_IDS = [
 const itemCollections = (library: typeof contentLibraryV1) => [
     ...library.publicArchetypes,
     ...library.privateRiskPatterns,
+    library.reportVocabulary,
     ...library.reportModules,
     ...library.prompts,
     ...library.commonCopy,
@@ -152,6 +153,29 @@ export const validateContentLibrary = (
                 `${dimension} band ${index} is incomplete`,
             );
         });
+    }
+    check(
+        DIMENSIONS.every((dimension) =>
+            Boolean(library.reportVocabulary.dimensions[dimension]),
+        ),
+        'Report vocabulary must label all dimensions',
+    );
+    for (const flag of [
+        'dual-sole-authority',
+        'safe-ambition-gap',
+        'risk-gap',
+        'money-gap',
+        'product-large-structural-difference',
+        'conflict-latency-gap',
+        'operating-gap',
+    ] as const) {
+        check(
+            Boolean(
+                library.reportVocabulary.flags[flag].title &&
+                library.reportVocabulary.flags[flag].copy,
+            ),
+            `Missing report vocabulary for ${flag}`,
+        );
     }
 
     const topics = new Set(library.prompts.map(({ topic }) => topic));
