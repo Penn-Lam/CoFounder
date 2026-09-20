@@ -1,4 +1,10 @@
 import { contentLibraryV1 } from './content-library';
+import {
+    createJevClassifier,
+    type ClassificationDecision,
+    type PairClassifier,
+    TransientClassificationError,
+} from './jev-classifier';
 import type { PairTestState } from './pair-repository';
 import {
     type PrivateReportFacts,
@@ -35,8 +41,12 @@ const severityRank = (severity: string | null) =>
 export const processPairReport = async (
     repository: ReportRepository,
     pairId: string,
-    now: () => Date = () => new Date(),
+    options: {
+        now?: () => Date;
+        classifier?: PairClassifier;
+    } = {},
 ): Promise<StoredPairResult> => {
+    const now = options.now ?? (() => new Date());
     const existing = await repository.getResult(pairId);
     if (existing) return existing;
     const input = await repository.getInput(pairId);
@@ -46,6 +56,37 @@ export const processPairReport = async (
         toRulesParticipant(input.creator.state),
         toRulesParticipant(input.partner.state),
     );
+    const classificationInput = {
+        featureVector: rules.pairFeatureVector,
+        publicArchetypeCandidates:
+            rules.publicFeatures.publicArchetypeCandidates,
+        forbiddenPublicArchetypes:
+            rules.publicFeatures.forbiddenPublicArchetypes,
+        conservativePublicArchetypeId:
+            rules.conservativeResult.publicArchetypeId,
+    };
+    let classification: ClassificationDecision;
+    try {
+        classification = await (
+            options.classifier ?? createJevClassifier({})
+        ).classify(classificationInput);
+    } catch (error) {
+        const retryDeadline =
+            new Date(input.generationStartedAt).getTime() + 5 * 60 * 1000;
+        if (
+            error instanceof TransientClassificationError &&
+            now().getTime() < retryDeadline
+        ) {
+            throw error;
+        }
+        classification = await createJevClassifier({}).classify(
+            classificationInput,
+        );
+        classification.fallbackReason =
+            error instanceof TransientClassificationError
+                ? error.message
+                : 'classifier_failure';
+    }
     const vocabulary = contentLibraryV1.reportVocabulary;
     const dimensions = DIMENSIONS.map((dimension) => ({
         dimension,
@@ -133,7 +174,7 @@ export const processPairReport = async (
                 title: topDifference.label,
                 copy: topDifferenceModule.copy,
             };
-    const archetypeKey = rules.conservativeResult.publicArchetypeId;
+    const archetypeKey = classification.publicArchetypeId;
     const archetype = contentLibraryV1.publicArchetypes.find(
         ({ key }) => key === archetypeKey,
     )!;
@@ -163,6 +204,16 @@ export const processPairReport = async (
             questionSet: rules.questionSetVersion,
             rules: rules.rulesVersion,
             content: contentLibraryV1.version,
+        },
+        classification: {
+            source: classification.source,
+            requestedModel: classification.requestedModel,
+            responseModel: classification.responseModel,
+            decisionSchemaVersion: classification.decisionSchemaVersion,
+            probabilities: classification.probabilities,
+            confidence: classification.confidence,
+            selectedContentIds: classification.selectedContentIds,
+            fallbackReason: classification.fallbackReason,
         },
         roles: { a: 'creator', b: 'partner' },
         portrait: {

@@ -1,4 +1,5 @@
 import type { PairTestState } from './pair-repository';
+import type { ClassificationProvenance } from './jev-classifier';
 
 export type StoredPairResult = {
     pairId: string;
@@ -18,6 +19,7 @@ export type ReportParticipantInput = {
 
 export type ReportInput = {
     pairId: string;
+    generationStartedAt: string;
     creator: ReportParticipantInput;
     partner: ReportParticipantInput;
 };
@@ -37,6 +39,7 @@ export type ReportDimension = {
 
 export type PrivateReportFacts = {
     versions: { questionSet: string; rules: string; content: string };
+    classification: ClassificationProvenance;
     roles: { a: 'creator'; b: 'partner' };
     portrait: {
         archetypeId: string;
@@ -186,13 +189,17 @@ export const createReportRepository = (
         async getInput(pairId) {
             const pair = await database
                 .prepare(
-                    `SELECT creator_user_id, partner_user_id
+                    `SELECT creator_user_id, partner_user_id, report_generating_at
                      FROM cofounder_pair
                      WHERE pair_id = ? AND report_status = 'generating'
                        AND partner_user_id IS NOT NULL`,
                 )
                 .bind(pairId)
-                .first<{ creator_user_id: string; partner_user_id: string }>();
+                .first<{
+                    creator_user_id: string;
+                    partner_user_id: string;
+                    report_generating_at: string;
+                }>();
             if (!pair) return null;
 
             const tests = await database
@@ -230,6 +237,7 @@ export const createReportRepository = (
             });
             return {
                 pairId,
+                generationStartedAt: pair.report_generating_at,
                 creator: mapParticipant(creator),
                 partner: mapParticipant(partner),
             };

@@ -38,24 +38,50 @@ install_mint() {
 
 write_dev_vars() {
     local required=(BETTER_AUTH_SECRET RESEND_API_KEY EMAIL_FROM)
-    local name value escaped
+    local optional=(OPENROUTER_API_KEY JEV_CONFIDENCE_THRESHOLD)
+    local name value escaped temporary missing_required=0
 
     for name in "${required[@]}"; do
         if [[ -z "${!name:-}" ]]; then
-            printf 'Skipping .dev.vars: %s is not configured for this project.\n' "$name"
-            return
+            printf 'Missing local Worker binding: %s is not configured for this project.\n' "$name"
+            missing_required=1
         fi
     done
 
     umask 077
-    : > .dev.vars
+    temporary="$(mktemp .dev.vars.XXXXXX)"
+    if ((missing_required)) && [[ -f .dev.vars ]]; then
+        cat .dev.vars > "$temporary"
+    fi
+
+    if ((!missing_required)); then
+        : > "$temporary"
+    fi
     for name in "${required[@]}"; do
+        if ((missing_required)); then
+            continue
+        fi
         value="${!name}"
         escaped="${value//\\/\\\\}"
         escaped="${escaped//\"/\\\"}"
-        printf '%s="%s"\n' "$name" "$escaped" >> .dev.vars
+        printf '%s="%s"\n' "$name" "$escaped" >> "$temporary"
     done
-    printf 'Wrote local Worker bindings from project configuration.\n'
+    for name in "${optional[@]}"; do
+        if [[ -z "${!name:-}" ]]; then
+            continue
+        fi
+        value="${!name}"
+        escaped="${value//\\/\\\\}"
+        escaped="${escaped//\"/\\\"}"
+        sed -i "/^${name}=/d" "$temporary"
+        printf '%s="%s"\n' "$name" "$escaped" >> "$temporary"
+    done
+    mv "$temporary" .dev.vars
+    if ((missing_required)); then
+        printf 'Wrote available local Worker bindings; authentication or email may be unavailable.\n'
+    else
+        printf 'Wrote local Worker bindings from project configuration.\n'
+    fi
 }
 
 run_step "Install pinned Bun toolchain" install_bun

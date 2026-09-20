@@ -2,6 +2,7 @@ import questionBankJson from '../docs/calibration/question-bank-v0.json';
 import type { PairProfile } from './questionnaire';
 
 export const RULES_VERSION = 'cofounder-rules-v1';
+export const PAIR_FEATURE_VECTOR_VERSION = 'pair-feature-vector-v1';
 
 export const DIMENSIONS = [
     'ambition',
@@ -742,12 +743,53 @@ export const derivePairRules = (
         ...valuesB,
         ambition: safeAmbitionValue(participantB.core),
     };
+    const safeBandsA = Object.fromEntries(
+        DIMENSIONS.map((dimension) => [
+            dimension,
+            dimensionBand(safeValuesA[dimension]),
+        ]),
+    );
+    const safeBandsB = Object.fromEntries(
+        DIMENSIONS.map((dimension) => [
+            dimension,
+            dimensionBand(safeValuesB[dimension]),
+        ]),
+    );
+    const safeDimensionGaps = Object.fromEntries(
+        DIMENSIONS.map((dimension) => [
+            dimension,
+            Math.abs(safeValuesA[dimension] - safeValuesB[dimension]),
+        ]),
+    );
     const latencyA = conflictLatency(participantA.core);
     const latencyB = conflictLatency(participantB.core);
     const conflictLatencyGapDays = Math.abs(latencyA - latencyB);
+    const mirrorA = mirrorOutcomes(participantA, participantB);
+    const mirrorB = mirrorOutcomes(participantB, participantA);
+    const publicMirrorCounts = (outcomes: ReturnType<typeof mirrorOutcomes>) => {
+        const publicOutcomes = outcomes.outcomes.filter(
+            ({ questionId }) => questionId !== 'Q1',
+        );
+        return {
+            exact: publicOutcomes.filter(({ relation }) => relation === 'exact')
+                .length,
+            near: publicOutcomes.filter(({ relation }) => relation === 'near')
+                .length,
+            opposite: publicOutcomes.filter(
+                ({ relation }) => relation === 'opposite',
+            ).length,
+        };
+    };
     const matches = dimensionMatches(
         valuesA,
         valuesB,
+        participantA.profile.companyAuthority,
+        participantB.profile.companyAuthority,
+        conflictLatencyGapDays,
+    );
+    const publicMatches = dimensionMatches(
+        safeValuesA,
+        safeValuesB,
         participantA.profile.companyAuthority,
         participantB.profile.companyAuthority,
         conflictLatencyGapDays,
@@ -789,6 +831,12 @@ export const derivePairRules = (
         safeValuesB,
         flags,
     );
+    const publicTags = [
+        ...new Set([
+            ...collectTags(participantA.core),
+            ...collectTags(participantB.core),
+        ]),
+    ];
 
     return {
         questionSetVersion: questionBank.question_set_version,
@@ -819,43 +867,45 @@ export const derivePairRules = (
             DIMENSIONS.map((dimension) => [dimension, matches[dimension]]),
         ) as Record<Dimension, { match: number; relation: Relationship }>,
         mirror: {
-            aPredictsB: mirrorOutcomes(participantA, participantB),
-            bPredictsA: mirrorOutcomes(participantB, participantA),
+            aPredictsB: mirrorA,
+            bPredictsA: mirrorB,
         },
         conflictFlags: flags,
         sensitiveSignals,
         unresolvedTopics: sensitiveSignals
             .filter(({ state }) => state === 'unresolved')
             .map(({ topic }) => topic),
+        pairFeatureVector: {
+            schema_version: PAIR_FEATURE_VECTOR_VERSION,
+            participant_dimension_bands: {
+                participant_a: safeBandsA,
+                participant_b: safeBandsB,
+            },
+            dimension_match_scores: Object.fromEntries(
+                DIMENSIONS.map((dimension) => [
+                    dimension,
+                    publicMatches[dimension].match,
+                ]),
+            ),
+            dimension_gaps: safeDimensionGaps,
+            authority_state: matches.authority.state,
+            conflict_latency_gap_days: conflictLatencyGapDays,
+            mirror_counts: {
+                participant_a_predicts_b: publicMirrorCounts(mirrorA),
+                participant_b_predicts_a: publicMirrorCounts(mirrorB),
+            },
+            ordinary_conflict_flag_codes: flags.map(({ id }) => id),
+            narrative_tag_codes: publicTags,
+        },
         publicFeatures: {
             rulesVersion: RULES_VERSION,
             participantBands: {
-                a: Object.fromEntries(
-                    DIMENSIONS.map((dimension) => [
-                        dimension,
-                        dimensionBand(safeValuesA[dimension]),
-                    ]),
-                ),
-                b: Object.fromEntries(
-                    DIMENSIONS.map((dimension) => [
-                        dimension,
-                        dimensionBand(safeValuesB[dimension]),
-                    ]),
-                ),
+                a: safeBandsA,
+                b: safeBandsB,
             },
-            dimensionGaps: Object.fromEntries(
-                DIMENSIONS.map((dimension) => [
-                    dimension,
-                    Math.abs(safeValuesA[dimension] - safeValuesB[dimension]),
-                ]),
-            ),
+            dimensionGaps: safeDimensionGaps,
             ordinaryConflictFlagIds: flags.map(({ id }) => id),
-            tags: [
-                ...new Set([
-                    ...collectTags(participantA.core),
-                    ...collectTags(participantB.core),
-                ]),
-            ],
+            tags: publicTags,
             publicArchetypeCandidates: candidateResult.candidates,
             forbiddenPublicArchetypes: candidateResult.forbidden,
         },

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import questionBank from '../docs/calibration/question-bank-v0.json';
 import { processPairReport } from './report-processor';
+import {
+    type PairClassifier,
+    TransientClassificationError,
+} from './jev-classifier';
 import type {
     ReportInput,
     ReportRepository,
@@ -35,6 +39,7 @@ const profile = {
 
 const input: ReportInput = {
     pairId: 'pair-1',
+    generationStartedAt: '2026-09-20T12:00:00.000Z',
     creator: {
         userId: 'creator',
         questionSetVersion: questionBank.question_set_version,
@@ -80,7 +85,7 @@ describe('private report processor', () => {
         const result = await processPairReport(
             test.repository,
             input.pairId,
-            () => new Date('2026-09-20T12:02:00.000Z'),
+            { now: () => new Date('2026-09-20T12:02:00.000Z') },
         );
         const serialized = JSON.stringify(result.report);
 
@@ -91,6 +96,11 @@ describe('private report processor', () => {
             questionSet: questionBank.question_set_version,
             rules: 'cofounder-rules-v1',
             content: 'cofounder-content-v1',
+        });
+        expect(result.report.classification).toMatchObject({
+            source: 'conservative',
+            fallbackReason: 'provider_not_configured',
+            decisionSchemaVersion: 'cofounder-jev-decision-v1',
         });
         expect(serialized).not.toContain('core:Q1');
         expect(serialized).not.toContain('red-line:R1');
@@ -116,5 +126,32 @@ describe('private report processor', () => {
         expect(input).toEqual(before);
         expect(input.creator.state.answers['core:Q1']).toBeDefined();
         expect(input.partner.state.answers['red-line:R4']).toBeDefined();
+    });
+
+    it('retries transient classification failures only inside the five-minute window', async () => {
+        const classifier: PairClassifier = {
+            async classify() {
+                throw new TransientClassificationError('classifier_rate_limited');
+            },
+        };
+        const retrying = harness();
+        await expect(
+            processPairReport(retrying.repository, input.pairId, {
+                classifier,
+                now: () => new Date('2026-09-20T12:04:59.000Z'),
+            }),
+        ).rejects.toThrow('classifier_rate_limited');
+        expect(retrying.commits()).toBe(0);
+
+        const expired = harness();
+        const result = await processPairReport(expired.repository, input.pairId, {
+            classifier,
+            now: () => new Date('2026-09-20T12:05:00.000Z'),
+        });
+        expect(result.report.classification).toMatchObject({
+            source: 'conservative',
+            fallbackReason: 'classifier_rate_limited',
+        });
+        expect(expired.commits()).toBe(1);
     });
 });

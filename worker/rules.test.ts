@@ -486,16 +486,21 @@ describe('versioned Rules boundary', () => {
         const sensitiveDifference = derivePairRules(
             participant({
                 core: { Q1: 'A' },
+                mirror: { Q1: 'D' },
                 redLine: { R1: 'A', R2: 'A', R3: 'A', R4: 'A' },
             }),
             participant({
                 core: { Q1: 'C' },
+                mirror: { Q1: 'B' },
                 redLine: { R1: 'C', R2: 'D', R3: 'C', R4: 'C' },
             }),
         );
 
         expect(sensitiveDifference.publicFeatures).toEqual(
             baseline.publicFeatures,
+        );
+        expect(sensitiveDifference.pairFeatureVector).toEqual(
+            baseline.pairFeatureVector,
         );
         expect(
             sensitiveDifference.sensitiveSignals.some(

@@ -27,6 +27,7 @@ import {
     validateProfile,
 } from './questionnaire';
 import { contentLibraryV1 } from './content-library';
+import { createJevClassifier } from './jev-classifier';
 import { processPairReport } from './report-processor';
 import {
     createReportRepository,
@@ -56,6 +57,8 @@ export type Bindings = {
     ASSETS: AssetBinding;
     MEDIA: MediaBinding;
     REPORT_QUEUE: Queue<GenerateReportMessage>;
+    OPENROUTER_API_KEY?: string;
+    JEV_CONFIDENCE_THRESHOLD?: string;
 } & AuthBindings;
 
 export type AppServices = {
@@ -81,6 +84,14 @@ const defaultServices: AppServices = {
     },
     id: () => crypto.randomUUID(),
     now: () => new Date(),
+};
+
+const confidenceThreshold = (value?: string) => {
+    if (value === undefined || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+        ? parsed
+        : undefined;
 };
 
 type CurrentAccount = {
@@ -644,7 +655,14 @@ const worker: ExportedHandler<Bindings, GenerateReportMessage> = {
                 continue;
             }
             try {
-                await processPairReport(repository, message.body.pairId);
+                await processPairReport(repository, message.body.pairId, {
+                    classifier: createJevClassifier({
+                        apiKey: environment.OPENROUTER_API_KEY,
+                        confidenceThreshold: confidenceThreshold(
+                            environment.JEV_CONFIDENCE_THRESHOLD,
+                        ),
+                    }),
+                });
                 await repository.markJobCompleted(
                     message.body.pairId,
                     new Date().toISOString(),
