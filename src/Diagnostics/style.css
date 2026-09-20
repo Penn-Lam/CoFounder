@@ -153,7 +153,8 @@
 .pair-profile,
 .pair-question,
 .pair-review,
-.pair-complete {
+.pair-complete,
+.invite-claim {
     display: flex;
     width: min(100%, 860px);
     margin: 0 auto;
@@ -168,7 +169,8 @@
 .pair-profile h1,
 .pair-question h1,
 .pair-review h1,
-.pair-complete h1 {
+.pair-complete h1,
+.invite-claim h1 {
     margin: 0;
     font-size: clamp(30px, 4vw, 48px);
     white-space: pre-line;
@@ -311,6 +313,7 @@
 .pair-navigation button,
 .pair-save-error button,
 .pair-complete button,
+.invite-claim button,
 .draft-list button,
 .review-list button,
 .profile-review {
@@ -349,6 +352,42 @@
     border: 2px solid #850000;
     background: #fff0e8;
     color: #850000;
+}
+
+.invitation-panel,
+.partner-waiting-state {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px;
+    border: 2px solid #102a2a;
+    background: #fffdf4;
+}
+
+.invitation-panel h2,
+.invitation-panel p,
+.partner-waiting-state p {
+    margin: 0;
+}
+
+.invitation-panel output {
+    overflow-wrap: anywhere;
+    padding: 12px;
+    border: 2px inset #ffffff;
+    background: #ffffff;
+    color: #000080;
+    font-family: Terminal, 'Courier New', monospace;
+}
+
+.invitation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.partner-waiting-state strong {
+    font-family: MillenniumBold, 'Microsoft YaHei', serif;
+    font-size: 20px;
 }
 
 .draft-list,
@@ -734,12 +773,14 @@
     .pair-question h1,
     .pair-profile h1,
     .pair-review h1,
-    .pair-complete h1 {
+    .pair-complete h1,
+    .invite-claim h1 {
         font-size: 32px;
     }
 
     .pair-navigation,
-    .pair-save-error {
+    .pair-save-error,
+    .invitation-actions {
         align-items: stretch;
         flex-direction: column;
     }

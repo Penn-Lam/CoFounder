@@ -75,6 +75,16 @@ type AppEnvironment = {
 const fetchShell = (assets: AssetBinding, path: string) =>
     assets.fetch(new Request(`https://assets.local${path}`));
 
+const hashInvitationToken = async (token: string) => {
+    const digest = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(token),
+    );
+    return Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, '0'),
+    ).join('');
+};
+
 export const createApp = (services: AppServices = defaultServices) => {
     const app = new Hono<AppEnvironment>();
 
@@ -210,6 +220,10 @@ export const createApp = (services: AppServices = defaultServices) => {
 
     const pairResponse = (pair: PairTestRecord) => ({
         pairId: pair.pairId,
+        role: pair.role,
+        lifecycle: pair.lifecycle,
+        partnerStatus: pair.partnerStatus,
+        invitationStatus: pair.invitationStatus,
         questionSetVersion: pair.questionSetVersion,
         revision: pair.revision,
         status: pair.submittedAt ? ('submitted' as const) : ('draft' as const),
@@ -245,6 +259,53 @@ export const createApp = (services: AppServices = defaultServices) => {
             : context.json({ code: 'QUESTION_SET_NOT_FOUND' }, 404);
     });
 
+    app.get('/api/invitations/:token', async (context) => {
+        const token = context.req.param('token');
+        if (!token || token.length > 200) {
+            return context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
+        }
+        const invitation = await services
+            .pairs(context.env)
+            .findInvitation(await hashInvitationToken(token));
+
+        return invitation
+            ? context.json({ creatorDisplayName: invitation.creatorDisplayName })
+            : context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
+    });
+
+    app.post('/api/invitations/:token/claim', async (context) => {
+        const account = await getAccount(context);
+        if (!account) return context.json({ code: 'UNAUTHORIZED' }, 401);
+        if (account.consentState !== 'current') {
+            return context.json({ code: 'CONSENT_RENEWAL_REQUIRED' }, 428);
+        }
+        if (!validateDisplayName(account.session.user.name).ok) {
+            return context.json({ code: 'DISPLAY_NAME_REQUIRED' }, 428);
+        }
+        const body = (await context.req.json().catch(() => null)) as {
+            accepted?: unknown;
+        } | null;
+        if (body?.accepted !== true) {
+            return context.json({ code: 'INVITATION_ACCEPTANCE_REQUIRED' }, 400);
+        }
+        const token = context.req.param('token');
+        if (!token || token.length > 200) {
+            return context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
+        }
+        const result = await services.pairs(context.env).claimInvitation(
+            await hashInvitationToken(token),
+            account.session.user.id,
+            services.now().toISOString(),
+        );
+        if (result === 'same_account') {
+            return context.json({ code: 'SELF_INVITATION' }, 409);
+        }
+        if (result === 'unavailable') {
+            return context.json({ code: 'INVITATION_NOT_FOUND' }, 404);
+        }
+        return context.json(pairResponse(result));
+    });
+
     app.post('/api/pairs', async (context) => {
         const account = context.get('account');
         const createdAt = services.now().toISOString();
@@ -263,7 +324,7 @@ export const createApp = (services: AppServices = defaultServices) => {
     app.get('/api/pairs', async (context) => {
         const pairs = await services
             .pairs(context.env)
-            .listActive(context.get('account').session.user.id);
+            .listForUser(context.get('account').session.user.id);
 
         return context.json({ pairs: pairs.map(pairResponse) });
     });
@@ -382,15 +443,61 @@ export const createApp = (services: AppServices = defaultServices) => {
             );
         }
 
+        const invitationToken = pair.role === 'creator' ? services.id() : null;
         const result = await repository.submit(
             pairId,
             userId,
             revision as number,
             services.now().toISOString(),
+            invitationToken
+                ? await hashInvitationToken(invitationToken)
+                : undefined,
         );
         const error = writeError(context, result);
 
-        return error || context.json(pairResponse(result as PairTestRecord));
+        return (
+            error ||
+            context.json({
+                ...pairResponse(result as PairTestRecord),
+                ...(invitationToken
+                    ? { invitation: { path: `/invite/${invitationToken}` } }
+                    : {}),
+            })
+        );
+    });
+
+    app.post('/api/pairs/:pairId/invitation', async (context) => {
+        const body = (await context.req.json().catch(() => null)) as {
+            action?: unknown;
+        } | null;
+        if (body?.action !== 'reset' && body?.action !== 'cancel') {
+            return context.json({ code: 'INVALID_INVITATION_ACTION' }, 400);
+        }
+        const repository = services.pairs(context.env);
+        const pairId = context.req.param('pairId');
+        const userId = context.get('account').session.user.id;
+        const now = services.now().toISOString();
+        const invitationToken = body.action === 'reset' ? services.id() : null;
+        const result = invitationToken
+            ? await repository.resetInvitation(
+                  pairId,
+                  userId,
+                  await hashInvitationToken(invitationToken),
+                  now,
+              )
+            : await repository.cancelInvitation(pairId, userId, now);
+        if (result === 'not_found') {
+            return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        }
+        if (result === 'invitation_locked') {
+            return context.json({ code: 'INVITATION_LOCKED' }, 409);
+        }
+        return context.json({
+            ...pairResponse(result),
+            ...(invitationToken
+                ? { invitation: { path: `/invite/${invitationToken}` } }
+                : {}),
+        });
     });
 
     app.get('/', (context) => fetchShell(context.env.ASSETS, '/index.html'));

@@ -35,6 +35,11 @@ const ERROR_MESSAGES: Record<string, string> = {
     REVISION_CONFLICT: '另一台设备已经保存了更新版本。请重新载入后继续。',
     PAIR_TEST_SEALED: '这份 Pair Test 已提交，不能再修改。',
     QUESTION_SET_NOT_FOUND: '这份 Pair Test 使用的题库版本暂时不可用。',
+    INVITATION_NOT_FOUND: '邀请链接无效、已取消或已经被使用。',
+    INVITATION_ACCEPTANCE_REQUIRED: '请明确接受邀请后继续。',
+    SELF_INVITATION: '不能使用创建 Pair 的同一个账户接受邀请。',
+    INVITATION_LOCKED: '合伙人已经加入，不能再重置或取消邀请。',
+    DISPLAY_NAME_REQUIRED: '请先设置显示名，再接受邀请。',
 };
 
 const request = async <T,>(
@@ -93,12 +98,22 @@ type PairProfile = {
 };
 type PairState = {
     pairId: string;
+    role: 'creator' | 'partner';
+    lifecycle:
+        | 'creator_draft'
+        | 'waiting_partner'
+        | 'partner_in_progress'
+        | 'pair_complete';
+    partnerStatus: 'not_started' | 'started' | null;
+    invitationStatus: 'unavailable' | 'active' | 'cancelled' | 'claimed';
     questionSetVersion: string;
     revision: number;
     status: 'draft' | 'submitted';
     profile: PairProfile | null;
     answers: Record<string, string>;
+    invitation?: { path: string };
 };
+type InvitationPreview = { creatorDisplayName: string };
 type TestQuestion = Question & {
     section: 'core' | 'mirror' | 'red-line';
     answerKey: string;
@@ -527,6 +542,10 @@ const PairTestFlow: React.FC<{
     const [error, setError] = useState('');
     const [review, setReview] = useState(false);
     const [confirmed, setConfirmed] = useState(false);
+    const [invitationPath, setInvitationPath] = useState(
+        initialPair.invitation?.path || '',
+    );
+    const [copyStatus, setCopyStatus] = useState('');
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     const questions: TestQuestion[] = [
@@ -630,6 +649,7 @@ const PairTestFlow: React.FC<{
                 { revision: pair.revision },
             );
             setPair(sealed);
+            setInvitationPath(sealed.invitation?.path || '');
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : '提交失败，请重试。');
         } finally {
@@ -637,13 +657,105 @@ const PairTestFlow: React.FC<{
         }
     };
 
+    const updateInvitation = async (action: 'reset' | 'cancel') => {
+        setBusy(true);
+        setError('');
+        setCopyStatus('');
+        try {
+            const updated = await request<PairState>(
+                `/api/pairs/${pair.pairId}/invitation`,
+                { action },
+            );
+            setPair(updated);
+            setInvitationPath(updated.invitation?.path || '');
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '邀请操作失败，请重试。');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const copyInvitation = async () => {
+        if (!invitationPath) return;
+        try {
+            await navigator.clipboard.writeText(`${window.location.origin}${invitationPath}`);
+            setCopyStatus('邀请链接已复制。');
+        } catch {
+            setCopyStatus('复制失败，请手动复制下面的链接。');
+        }
+    };
+
     if (pair.status === 'submitted') {
+        if (pair.lifecycle === 'pair_complete') {
+            return (
+                <section className="pair-complete" aria-live="polite">
+                    <h1>双方都完成了。</h1>
+                    <p>你们的答案已经分别封存，任何一方都无法查看对方的逐题选择。</p>
+                    <p>Pair 已经可以进入规则计算与报告生成阶段。</p>
+                    <button type="button" onClick={onExit}>返回首页</button>
+                </section>
+            );
+        }
+
         return (
             <section className="pair-complete" aria-live="polite">
                 <h1>你的部分完成了。</h1>
-                <p>但合伙不是单机游戏。现在轮到另一个人。</p>
-                <p>邀请链接将在下一阶段开放；已提交答案现在不可修改。</p>
-                <button type="button" onClick={onExit}>返回首页</button>
+                <p>已提交答案不可修改，也不会向另一位参与者展示。</p>
+                {pair.role === 'creator' && pair.invitationStatus !== 'claimed' && (
+                    <div className="invitation-panel">
+                        <h2>邀请你的 Cofounder</h2>
+                        <p>打开链接只会显示邀请说明。对方登录并明确接受后，才会加入 Pair。</p>
+                        {invitationPath ? (
+                            <>
+                                <output>{window.location.origin}{invitationPath}</output>
+                                <button type="button" onClick={copyInvitation}>复制邀请链接</button>
+                            </>
+                        ) : (
+                            <p>
+                                {pair.invitationStatus === 'active'
+                                    ? '出于安全原因，刷新后不再显示原链接。你可以生成新链接，旧链接会立即失效。'
+                                    : '当前没有有效邀请链接。'}
+                            </p>
+                        )}
+                        <div className="invitation-actions">
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => updateInvitation('reset')}
+                            >
+                                {invitationPath ? '重置邀请链接' : '生成新邀请链接'}
+                            </button>
+                            {pair.invitationStatus === 'active' && (
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => updateInvitation('cancel')}
+                                >
+                                    取消邀请
+                                </button>
+                            )}
+                        </div>
+                        {copyStatus && <p role="status">{copyStatus}</p>}
+                    </div>
+                )}
+                {pair.role === 'creator' && pair.invitationStatus === 'claimed' && (
+                    <div className="partner-waiting-state">
+                        <strong>
+                            {pair.partnerStatus === 'started'
+                                ? 'TA 已经开始测试。'
+                                : 'TA 尚未开始测试。'}
+                        </strong>
+                        <p>为避免施压，这里不会显示具体答题进度。</p>
+                    </div>
+                )}
+                {pair.role === 'partner' && (
+                    <p>你的提交已完成。双方完成后，Pair 会进入报告生成阶段。</p>
+                )}
+                {error && <div className="pair-save-error" role="alert">{error}</div>}
+                <div className="pair-navigation">
+                    <button type="button" onClick={reload} disabled={busy}>刷新 Pair 状态</button>
+                    <button type="button" onClick={onExit}>返回首页</button>
+                </div>
             </section>
         );
     }
@@ -912,9 +1024,12 @@ const PairTestFlow: React.FC<{
 
 const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     const compact = window.innerWidth < 640;
+    const invitationToken = window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1] || '';
     const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
     const [activePairs, setActivePairs] = useState<PairState[]>([]);
     const [currentPair, setCurrentPair] = useState<PairState | null>(null);
+    const [invitationPreview, setInvitationPreview] = useState<InvitationPreview | null>(null);
+    const [invitationViewerName, setInvitationViewerName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -936,8 +1051,30 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
         }
     };
 
+    const loadInvitation = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const [preview, loadedQuestionnaire, account] = await Promise.all([
+                request<InvitationPreview>(
+                    `/api/invitations/${encodeURIComponent(invitationToken)}`,
+                ),
+                request<Questionnaire>('/api/questionnaire/current'),
+                request<AccountResponse>('/api/account'),
+            ]);
+            setInvitationPreview(preview);
+            setQuestionnaire(loadedQuestionnaire);
+            setInvitationViewerName(account.displayName || '当前账户');
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '无法载入邀请。');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        loadHome();
+        if (invitationToken) loadInvitation();
+        else loadHome();
     }, []);
 
     const createPair = async () => {
@@ -971,6 +1108,42 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
         }
     };
 
+    const claimInvitation = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const claimed = await request<PairState>(
+                `/api/invitations/${encodeURIComponent(invitationToken)}/claim`,
+                { accepted: true },
+            );
+            window.history.replaceState(null, '', '/desktop');
+            setInvitationPreview(null);
+            setCurrentPair(claimed);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '无法接受邀请。');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const leaveInvitation = () => {
+        window.history.replaceState(null, '', '/desktop');
+        setInvitationPreview(null);
+        loadHome();
+    };
+
+    const activeCreatedPairs = activePairs.filter(
+        (pair) => pair.role === 'creator' && pair.lifecycle !== 'pair_complete',
+    ).length;
+    const pairStatus = (pair: PairState) => {
+        if (pair.lifecycle === 'pair_complete') return '双方已完成';
+        if (pair.lifecycle === 'partner_in_progress') return 'TA 已经开始测试';
+        if (pair.status === 'submitted') {
+            return pair.invitationStatus === 'claimed' ? 'TA 尚未开始测试' : '等待邀请';
+        }
+        return `${Object.keys(pair.answers).length} / 34 已答`;
+    };
+
     return (
         <Window
             top={compact ? 8 : 24}
@@ -982,7 +1155,13 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             closeWindow={props.onClose}
             onInteract={props.onInteract}
             minimizeWindow={props.onMinimize}
-            bottomLeftText={currentPair ? `PAIR ${currentPair.pairId}` : 'SYSTEM READY'}
+            bottomLeftText={
+                currentPair
+                    ? `PAIR ${currentPair.pairId}`
+                    : invitationToken
+                      ? 'PAIR INVITATION'
+                      : 'SYSTEM READY'
+            }
         >
             <div className="diagnostics-browser">
                 <div className="browser-menu" aria-label="Browser menu">
@@ -995,7 +1174,11 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                 <div className="address-bar">
                     <span>Address</span>
                     <div>
-                        cofounder.local/desktop/{currentPair ? `pair/${currentPair.pairId}` : 'home'}
+                        cofounder.local/{currentPair
+                            ? `desktop/pair/${currentPair.pairId}`
+                            : invitationToken
+                              ? `invite/${invitationToken}`
+                              : 'desktop/home'}
                     </div>
                     <strong>Go</strong>
                 </div>
@@ -1008,6 +1191,35 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                             questionnaire={questionnaire}
                             onExit={loadHome}
                         />
+                    ) : invitationToken ? (
+                        <section className="invite-claim" aria-live="polite">
+                            {loading && <p role="status">正在检查邀请链接……</p>}
+                            {invitationPreview && (
+                                <>
+                                    <h1>{invitationPreview.creatorDisplayName} 已经完成测试。</h1>
+                                    <p>现在轮到你。接受前不会加入 Pair，也不会看到对方的答案。</p>
+                                    <div className="partner-waiting-state">
+                                        <strong>你将以 {invitationViewerName} 的身份加入。</strong>
+                                        <strong>双方提交前，彼此都看不到逐题答案。</strong>
+                                        <p>接受后，你将独立完成同一版本的 34 道测试题。</p>
+                                    </div>
+                                    <div className="pair-navigation">
+                                        <button type="button" onClick={leaveInvitation}>暂不接受</button>
+                                        <button
+                                            type="button"
+                                            disabled={loading}
+                                            onClick={claimInvitation}
+                                        >
+                                            接受挑战
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                            {error && <div className="pair-save-error" role="alert">{error}</div>}
+                            {!loading && !invitationPreview && (
+                                <button type="button" onClick={leaveInvitation}>返回 Cofounder</button>
+                            )}
+                        </section>
                     ) : (
                         <>
                             <h1>你们放在一起，会形成一家什么样的公司？</h1>
@@ -1017,11 +1229,11 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                             <div className="diagnostics-status">
                                 <div><b>MODE</b><span>2 PARTICIPANTS</span></div>
                                 <div><b>DURATION</b><span>ABOUT 10 MIN</span></div>
-                                <div><b>DRAFTS</b><span>{activePairs.length} / 3 ACTIVE</span></div>
+                                <div><b>ACTIVE PAIRS</b><span>{activeCreatedPairs} / 3</span></div>
                             </div>
                             {activePairs.length > 0 && (
                                 <section className="draft-list">
-                                    <h2>继续未完成的 Pair Test</h2>
+                                    <h2>你的 Pair</h2>
                                     {activePairs.map((pair) => (
                                         <button
                                             type="button"
@@ -1029,7 +1241,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                                             onClick={() => openPair(pair)}
                                         >
                                             <span>Pair {pair.pairId.slice(0, 8)}</span>
-                                            <b>{Object.keys(pair.answers).length} / 34 已答</b>
+                                            <b>{pairStatus(pair)}</b>
                                         </button>
                                     ))}
                                 </section>
@@ -1039,7 +1251,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                                 <button
                                     type="button"
                                     onClick={createPair}
-                                    disabled={loading || activePairs.length >= 3}
+                                    disabled={loading || activeCreatedPairs >= 3}
                                 >
                                     {loading ? 'LOADING…' : 'NEW PAIR TEST'}
                                 </button>

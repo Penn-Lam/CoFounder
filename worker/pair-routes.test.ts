@@ -25,6 +25,10 @@ const createHarness = () => {
             const pair: PairTestRecord = {
                 pairId,
                 userId,
+                role: 'creator',
+                lifecycle: 'creator_draft',
+                partnerStatus: null,
+                invitationStatus: 'unavailable',
                 questionSetVersion,
                 revision: 0,
                 state: { profile: null, answers: {} },
@@ -38,9 +42,9 @@ const createHarness = () => {
             const pair = pairs.get(pairId);
             return pair?.userId === userId ? pair : null;
         },
-        async listActive(userId) {
+        async listForUser(userId) {
             return [...pairs.values()].filter(
-                (pair) => pair.userId === userId && pair.submittedAt === null,
+                (pair) => pair.userId === userId,
             );
         },
         async save(pairId, userId, expectedRevision, state, updatedAt) {
@@ -53,14 +57,28 @@ const createHarness = () => {
             pair.updatedAt = updatedAt;
             return pair;
         },
-        async submit(pairId, userId, expectedRevision, submittedAt) {
+        async submit(pairId, userId, expectedRevision, submittedAt, invitationTokenHash) {
             const pair = pairs.get(pairId);
             if (!pair || pair.userId !== userId) return 'not_found';
             if (pair.submittedAt) return 'sealed';
             if (pair.revision !== expectedRevision) return 'conflict';
             pair.revision += 1;
             pair.submittedAt = submittedAt;
+            pair.lifecycle = 'waiting_partner';
+            pair.invitationStatus = invitationTokenHash ? 'active' : 'cancelled';
             return pair;
+        },
+        async findInvitation() {
+            return null;
+        },
+        async claimInvitation() {
+            return 'unavailable';
+        },
+        async resetInvitation() {
+            return 'invitation_locked';
+        },
+        async cancelInvitation() {
+            return 'invitation_locked';
         },
     };
     let nextId = 1;
