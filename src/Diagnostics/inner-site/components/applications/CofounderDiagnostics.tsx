@@ -8,6 +8,8 @@ import {
 
 export interface CofounderDiagnosticsProps extends WindowAppProps {}
 
+export const DIAGNOSTICS_NAVIGATE_EVENT = 'cofounder:diagnostics-navigate';
+
 export interface AccountLoginProps {
     onComplete(): void;
     onPrivacyData?(): void;
@@ -1450,6 +1452,16 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const navigate = (event: Event) => {
+            const destination = (event as CustomEvent<string>).detail;
+            if (destination === 'new-pair') createPair();
+            if (destination === 'my-pairs') loadHome();
+        };
+        window.addEventListener(DIAGNOSTICS_NAVIGATE_EVENT, navigate);
+        return () => window.removeEventListener(DIAGNOSTICS_NAVIGATE_EVENT, navigate);
+    });
 
     const openPair = async (pair: PairState) => {
         setLoading(true);

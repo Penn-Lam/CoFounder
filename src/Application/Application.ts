@@ -60,7 +60,6 @@ export default class Application {
         this.resources = new Resources(sources);
         this.camera = new Camera();
         this.renderer = new Renderer();
-        this.camera.createControls();
         this.world = new World();
 
         this.ui = new UI();

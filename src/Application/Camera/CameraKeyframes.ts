@@ -34,10 +34,6 @@ const keys: { [key in CameraKey]: CameraKeyframe } = {
         position: new THREE.Vector3(-35000, 35000, 35000),
         focalPoint: new THREE.Vector3(0, -5000, 0),
     },
-    orbitControlsStart: {
-        position: new THREE.Vector3(-15000, 10000, 15000),
-        focalPoint: new THREE.Vector3(-100, 350, 0),
-    },
 };
 
 export class MonitorKeyframe extends CameraKeyframeInstance {
@@ -123,6 +119,10 @@ export class IdleKeyframe extends CameraKeyframeInstance {
     }
 
     update() {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            this.position.copy(this.origin);
+            return;
+        }
         this.position.x =
             Math.sin((this.time.elapsed + 19000) * 0.00008) * this.origin.x;
         this.position.y =
@@ -131,13 +131,4 @@ export class IdleKeyframe extends CameraKeyframeInstance {
             3000;
         this.position.z = this.position.z;
     }
-}
-
-export class OrbitControlsStart extends CameraKeyframeInstance {
-    constructor() {
-        const keyframe = keys.orbitControlsStart;
-        super(keyframe);
-    }
-
-    update() {}
 }

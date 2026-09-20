@@ -19,22 +19,48 @@ const Credits: React.FC<CreditsProps> = (props) => (
         <div className="credits-content">
             <h2>Credits</h2>
             <p>
-                Original portfolio, OS chrome, engineering and design by Henry
-                Heffernan, 2022.
+                Original 3D room, portfolio concept, engineering and design by
+                {' '}<a href="https://henryheffernan.com/">Henry Heffernan</a>,
+                2022. The outer room source is reused under its MIT License;
+                Henry's copyright notice is preserved in LICENSE.md.
             </p>
             <p>
                 Cofounder product adaptation by the Cofounder team, 2026.
             </p>
             <p>
-                Reused from portfolio-inner-site at commit 23cf84a. Publication
-                requires written permission from Henry.
+                IE-style OS chrome is adapted from Henry's{' '}
+                <a href="https://github.com/henryjeff/portfolio-inner-site">
+                    portfolio-inner-site
+                </a>{' '}
+                at commit 23cf84a. Publication requires written permission
+                because that source has no explicit license. Attribution does
+                not grant permission.
             </p>
             <p>
-                Receipt Printer component and paper textures adapted from
-                dqnamo/website at commit 55552ac. Tailwind and React 19 bindings
-                were adapted for this React 17 application. Its package metadata
-                declares ISC, but the repository has no license file; confirm
+                Receipt Printer component and paper textures are adapted from{' '}
+                <a href="https://www.dqnamo.com/experiments/receipt-printer">
+                    dqnamo's Receipt Printer
+                </a>{' '}
+                and dqnamo/website commit 55552ac. Its package metadata declares
+                ISC, but the source repository has no license file; confirm
                 redistribution terms before release.
+            </p>
+            <p>
+                Runtime and UI libraries include React, Three.js, Tween.js,
+                Framer Motion, Bezier Easing, QRCode and html-to-image. Each is
+                MIT licensed; retained notices are emitted with the production
+                JavaScript bundles.
+            </p>
+            <p>
+                The computer, environment and decor models, baked textures,
+                local fonts, Windows-style icons, audio and other creative
+                assets originate from Henry's two source projects. Their reuse
+                remains subject to the permission and asset-rights review above.
+            </p>
+            <p>
+                The OTP email presentation adapts React Email's Protocol demo,
+                MIT licensed. Full notices and source links are recorded in
+                docs/third-party-notices.md and inner-site/UPSTREAM.md.
             </p>
         </div>
     </Window>

@@ -39,11 +39,13 @@ const Button: React.FC<ButtonProps> = ({ icon, text, onClick }) => {
     };
 
     return (
-        <div
+        <button
+            type="button"
+            aria-label={text || (icon === 'close' ? '关闭窗口' : icon === 'minimize' ? '最小化窗口' : '最大化或还原窗口')}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             style={outerBorderStyle}
-            onMouseDown={click}
+            onClick={click}
         >
             <div
                 style={Object.assign(
@@ -60,7 +62,7 @@ const Button: React.FC<ButtonProps> = ({ icon, text, onClick }) => {
                     <p>{text}</p>
                 )}
             </div>
-        </div>
+        </button>
     );
 };
 
@@ -70,7 +72,7 @@ const styles: StyleSheetCSS = {
         borderTopColor: Colors.white,
         borderLeftColor: Colors.white,
         background: Colors.lightGray,
-
+        padding: 0,
         cursor: 'pointer',
     },
     innerBorder: {

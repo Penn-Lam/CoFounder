@@ -10,7 +10,6 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
     const [overlayOpacity, setLoadingOverlayOpacity] = useState(1);
     const [loadingTextOpacity, setLoadingTextOpacity] = useState(1);
     const [startPopupOpacity, setStartPopupOpacity] = useState(0);
-    const [firefoxPopupOpacity, setFirefoxPopupOpacity] = useState(0);
     const [webGLErrorOpacity, setWebGLErrorOpacity] = useState(0);
 
     const [showBiosInfo, setShowBiosInfo] = useState(false);
@@ -32,10 +31,7 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
     window.addEventListener('resize', onResize);
 
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('debug')) {
-            start();
-        } else if (!detectWebGLContext()) {
+        if (!detectWebGLContext()) {
             setWebGLError(true);
         } else {
             setShowBiosInfo(true);
@@ -149,24 +145,24 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
                         <div style={styles.logoContainer}>
                             <div>
                                 <p style={styles.green}>
-                                    <b>Heffernan,</b>{' '}
+                                    <b>AI Cofounder</b>{' '}
                                 </p>
                                 <p style={styles.green}>
-                                    <b>Henry Inc.</b>
+                                    <b>Diagnostics</b>
                                 </p>
                             </div>
                         </div>
                         <div style={styles.headerInfo}>
-                            <p>Released: 01/13/2000</p>
-                            <p>HHBIOS (C)2000 Heffernan Henry Inc.,</p>
+                            <p>Released: 09/20/2026</p>
+                            <p>CFBIOS (C)2026 Cofounder Systems</p>
                         </div>
                     </div>
                     <div style={styles.body} className="loading-screen-body">
-                        <p>HSP S13 2000-2022 Special UC131S</p>
+                        <p>COFOUNDER GARAGE SYSTEM 2026</p>
                         <div style={styles.spacer} />
                         {showBiosInfo && (
                             <>
-                                <p>HSP Showcase(tm) XX 113</p>
+                                <p>PAIR DIAGNOSTICS CONSOLE</p>
                                 <p>Checking RAM : {14000} OK</p>
                                 <div style={styles.spacer} />
                                 <div style={styles.spacer} />
@@ -195,7 +191,7 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
                             <p>
                                 All Content Loaded, launching{' '}
                                 <b style={styles.green}>
-                                    'Henry Heffernan Portfolio Showcase'
+                                    'AI Cofounder Diagnostics'
                                 </b>{' '}
                                 V1.0
                             </p>
@@ -227,23 +223,23 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
                     <p>But do enjoy what I have done so far :)</p>
                     <div style={styles.spacer} />
                     <div style={styles.spacer} /> */}
-                    <p>Henry Heffernan Portfolio Showcase 2022</p>
+                    <p>AI Cofounder Diagnostics</p>
                     {mobileWarning && (
                         <>
                             <br />
                             <b>
                                 <p style={styles.warning}>
-                                    WARNING: This experience is best viewed on
+                                    你选择了完整 3D 车库体验。
                                 </p>
                                 <p style={styles.warning}>
-                                    a desktop or laptop computer.
+                                    移动设备默认静音，随时可跳过。
                                 </p>
                             </b>
                             <br />
                         </>
                     )}
                     <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                        <p>Click start to begin{'\xa0'}</p>
+                        <p>System ready{'\xa0'}</p>
                         <span className="blinking-cursor" />
                     </div>
                     <div
@@ -254,12 +250,12 @@ const LoadingScreen: React.FC<LoadingProps> = () => {
                             marginTop: '16px',
                         }}
                     >
-                        <div className="bios-start-button" onClick={start}>
-                            <p>START</p>
-                        </div>
+                        <button className="bios-start-button" onClick={start} type="button">
+                            <p>ENTER THE GARAGE</p>
+                        </button>
                     </div>
                     <a href="/desktop/" style={styles.skipLink}>
-                        SKIP TO COFOUNDER DIAGNOSTICS
+                        SKIP TO DIAGNOSTICS
                     </a>
                 </div>
             </div>

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import UIEventBus from '../EventBus';
 import { Easing } from '../Animation';
+import { getInitialGarageMuted } from '../../Audio/preferences';
 // @ts-ignore
 import volumeOn from '../../../../static/textures/UI/volume_on.svg';
 // @ts-ignore
@@ -12,12 +13,10 @@ interface MuteToggleProps {}
 const MuteToggle: React.FC<MuteToggleProps> = ({}) => {
     const [isHovering, setIsHovering] = useState(false);
     const [isActive, setIsActive] = useState(false);
-    const [muted, setMuted] = useState(false);
+    const [muted, setMuted] = useState(getInitialGarageMuted);
 
-    const onMouseDownHandler = useCallback(
-        (event) => {
-            setIsActive(true);
-            event.preventDefault();
+    const toggleMuted = useCallback(
+        () => {
             setMuted(!muted);
         },
         [muted]
@@ -32,12 +31,16 @@ const MuteToggle: React.FC<MuteToggleProps> = ({}) => {
     }, [muted]);
 
     return (
-        <div
+        <button
+            type="button"
+            aria-label={muted ? '开启车库声音' : '静音车库声音'}
+            aria-pressed={muted}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
             style={styles.container}
-            onMouseDown={onMouseDownHandler}
+            onMouseDown={() => setIsActive(true)}
             onMouseUp={onMouseUpHandler}
+            onClick={toggleMuted}
             className="icon-control-container"
             id="prevent-click"
         >
@@ -51,7 +54,7 @@ const MuteToggle: React.FC<MuteToggleProps> = ({}) => {
                 }
                 variants={iconVars}
             />
-        </div>
+        </button>
     );
 };
 
@@ -95,6 +98,8 @@ const styles: StyleSheetCSS = {
         justifyContent: 'center',
         alignItems: 'center',
         cursor: 'pointer',
+        border: 0,
+        padding: 4,
     },
 };
 

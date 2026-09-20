@@ -119,6 +119,13 @@ br {
     background-color: #000;
     border: 4px solid #fff;
     border-width: 4px 3px 4px 3px;
+    color: #fff;
+}
+
+.bios-start-button:focus-visible,
+.icon-control-container:focus-visible {
+    outline: 3px solid #ffff00;
+    outline-offset: 3px;
 }
 
 .bios-start-button p {
@@ -181,5 +188,12 @@ br {
     .loading-screen-footer {
         padding: 16px;
         padding-bottom: 32px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .blinking-cursor,
+    .loading::after {
+        animation: none;
     }
 }

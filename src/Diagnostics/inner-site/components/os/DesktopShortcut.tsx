@@ -93,6 +93,15 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
             id={`${shortcutId}`}
             style={Object.assign({}, styles.appShortcut, scaledStyle)}
             onMouseDown={handleClickShortcut}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onOpen();
+                }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`打开 ${shortcutName}`}
             ref={containerRef}
         >
             <div id={`${shortcutId}`} style={styles.iconContainer}>

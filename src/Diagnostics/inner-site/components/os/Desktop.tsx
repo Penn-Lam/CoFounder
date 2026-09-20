@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Colors from '../../constants/colors';
 import CofounderDiagnostics, {
     AccountLogin,
+    DIAGNOSTICS_NAVIGATE_EVENT,
 } from '../applications/CofounderDiagnostics';
 import Credits from '../applications/Credits';
 import PrivacyData from '../applications/PrivacyData';
@@ -74,7 +75,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
 
     useEffect(() => {
         const newShortcuts: DesktopShortcutProps[] = [];
-        Object.keys(APPLICATIONS).forEach((key) => {
+        ['diagnostics', 'credits'].forEach((key) => {
             const app = APPLICATIONS[key];
             newShortcuts.push({
                 shortcutName: app.name,
@@ -210,12 +211,48 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     }
     if (!accountReady && !isContentReview) {
         return (
-            <AccountLogin
-                onComplete={() => setAccountReady(true)}
-                onPrivacyData={() => window.location.assign('/desktop/privacy')}
-            />
+            <>
+                <AccountLogin
+                    onComplete={() => setAccountReady(true)}
+                    onPrivacyData={() => window.location.assign('/desktop/privacy')}
+                />
+                {window.location.search.includes('entry=mobile') && (
+                    <a className="mobile-garage-link" href="/?experience=3d">
+                        体验完整 3D 车库
+                    </a>
+                )}
+            </>
         );
     }
+
+    const openFromStart = (key: 'diagnostics' | 'credits' | 'privacy') => {
+        const shortcut = shortcuts.find(
+            (item) => item.shortcutName === APPLICATIONS[key].name,
+        );
+        if (shortcut) {
+            shortcut.onOpen();
+            return;
+        }
+        const app = APPLICATIONS[key];
+        addWindow(
+            app.key,
+            <app.component
+                onInteract={() => onWindowInteract(app.key)}
+                onMinimize={() => minimizeWindow(app.key)}
+                onClose={() => removeWindow(app.key)}
+                key={app.key}
+            />,
+        );
+    };
+
+    const navigateDiagnostics = (destination: 'new-pair' | 'my-pairs') => {
+        openFromStart('diagnostics');
+        window.setTimeout(() => {
+            window.dispatchEvent(
+                new CustomEvent(DIAGNOSTICS_NAVIGATE_EVENT, { detail: destination }),
+            );
+        });
+    };
 
     return !shutdown ? (
         <div style={styles.desktop}>
@@ -262,7 +299,16 @@ const Desktop: React.FC<DesktopProps> = (props) => {
                 windows={windows}
                 toggleMinimize={toggleMinimize}
                 shutdown={startShutdown}
+                newPair={() => navigateDiagnostics('new-pair')}
+                myPairs={() => navigateDiagnostics('my-pairs')}
+                privacy={() => openFromStart('privacy')}
+                credits={() => openFromStart('credits')}
             />
+            {window.location.search.includes('entry=mobile') && (
+                <a className="mobile-garage-link" href="/?experience=3d">
+                    体验完整 3D 车库
+                </a>
+            )}
             {receipt && (
                 <ReceiptPrinterOverlay
                     {...receipt}

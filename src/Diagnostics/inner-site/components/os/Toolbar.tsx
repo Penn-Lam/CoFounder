@@ -9,13 +9,22 @@ export interface ToolbarProps {
     windows: DesktopWindows;
     toggleMinimize: (key: string) => void;
     shutdown: () => void;
+    newPair: () => void;
+    myPairs: () => void;
+    privacy: () => void;
+    credits: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
     windows,
     toggleMinimize,
     shutdown,
+    newPair,
+    myPairs,
+    privacy,
+    credits,
 }) => {
+    const toolbarRef = useRef<HTMLDivElement>(null);
     const getTime = () => {
         const date = new Date();
         let hours = date.getHours();
@@ -29,8 +38,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
     };
 
     const [startWindowOpen, setStartWindowOpen] = useState(false);
-    const lastClickInside = useRef(false);
-
     const [lastActive, setLastActive] = useState('');
 
     useEffect(() => {
@@ -58,75 +65,94 @@ const Toolbar: React.FC<ToolbarProps> = ({
         updateTime();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const onCheckClick = () => {
-        if (lastClickInside.current) {
-            setStartWindowOpen(true);
-        } else {
-            setStartWindowOpen(false);
-        }
-        lastClickInside.current = false;
-    };
-
     useEffect(() => {
-        window.addEventListener('mousedown', onCheckClick, false);
+        const closeOutside = (event: MouseEvent) => {
+            if (!toolbarRef.current?.contains(event.target as Node)) {
+                setStartWindowOpen(false);
+            }
+        };
+        const closeWithKeyboard = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setStartWindowOpen(false);
+        };
+        window.addEventListener('mousedown', closeOutside, false);
+        window.addEventListener('keydown', closeWithKeyboard, false);
         return () => {
-            window.removeEventListener('mousedown', onCheckClick, false);
+            window.removeEventListener('mousedown', closeOutside, false);
+            window.removeEventListener('keydown', closeWithKeyboard, false);
         };
     }, []);
 
-    const onStartWindowClicked = () => {
-        setStartWindowOpen(true);
-        lastClickInside.current = true;
+    const runStartAction = (action: () => void) => {
+        setStartWindowOpen(false);
+        action();
     };
 
-    const toggleStartWindow = () => {
-        if (!startWindowOpen) {
-            lastClickInside.current = true;
-        } else {
-            lastClickInside.current = false;
-        }
-    };
+    const startItems = [
+        { label: 'New Pair Test', action: newPair, icon: 'showcaseIcon' as const },
+        { label: 'My Pairs', action: myPairs, icon: 'windowExplorerIcon' as const },
+        { label: 'Privacy & Data', action: privacy, icon: 'computerBig' as const },
+        { label: 'Credits', action: credits, icon: 'credits' as const },
+    ];
 
     return (
-        <div style={styles.toolbarOuter}>
+        <div style={styles.toolbarOuter} ref={toolbarRef}>
             {startWindowOpen && (
                 <div
-                    onMouseDown={onStartWindowClicked}
                     style={styles.startWindow}
+                    role="menu"
+                    aria-label="Start menu"
                 >
                     <div style={styles.startWindowInner}>
                         <div style={styles.verticalStartContainer}>
                             <p style={styles.verticalText}>Cofounder</p>
                         </div>
                         <div style={styles.startWindowContent}>
+                            {startItems.map((item) => (
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="start-menu-option"
+                                    style={styles.startMenuOption}
+                                    onClick={() => runStartAction(item.action)}
+                                    key={item.label}
+                                >
+                                    <Icon style={styles.startMenuIcon} icon={item.icon} />
+                                    <span style={styles.startMenuText}>{item.label}</span>
+                                </button>
+                            ))}
                             <div style={styles.startMenuSpace} />
                             <div style={styles.startMenuLine} />
-                            <div
+                            <button
+                                type="button"
+                                role="menuitem"
                                 className="start-menu-option"
                                 style={styles.startMenuOption}
-                                onMouseDown={shutdown}
+                                onClick={() => runStartAction(shutdown)}
                             >
                                 <Icon
                                     style={styles.startMenuIcon}
                                     icon="computerBig"
                                 />
-                                <p style={styles.startMenuText}>
+                                <span style={styles.startMenuText}>
                                     Sh<u>u</u>t down...
-                                </p>
-                            </div>
+                                </span>
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
             <div style={styles.toolbarInner}>
                 <div style={styles.toolbar}>
-                    <div
+                    <button
+                        type="button"
+                        aria-haspopup="menu"
+                        aria-expanded={startWindowOpen}
                         style={Object.assign(
                             {},
                             styles.startContainerOuter,
                             startWindowOpen && styles.activeTabOuter
                         )}
-                        onMouseDown={toggleStartWindow}
+                        onClick={() => setStartWindowOpen((open) => !open)}
                     >
                         <div
                             style={Object.assign(
@@ -142,11 +168,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
                             />
                             <p className="toolbar-text ">Start</p>
                         </div>
-                    </div>
+                    </button>
                     <div style={styles.toolbarTabsContainer}>
                         {Object.keys(windows).map((key) => {
                             return (
-                                <div
+                                <button
+                                    type="button"
+                                    aria-label={`${windows[key].minimized ? '恢复' : '最小化'} ${windows[key].name}`}
                                     key={key}
                                     style={Object.assign(
                                         {},
@@ -155,7 +183,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                                             !windows[key].minimized &&
                                             styles.activeTabOuter
                                     )}
-                                    onMouseDown={() => toggleMinimize(key)}
+                                    onClick={() => toggleMinimize(key)}
                                 >
                                     <div
                                         style={Object.assign(
@@ -175,7 +203,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                                             {windows[key].name}
                                         </p>
                                     </div>
-                                </div>
+                                </button>
                             );
                         })}
                     </div>
@@ -264,9 +292,15 @@ const styles: StyleSheetCSS = {
     },
     startMenuOption: {
         alignItems: 'center',
-        // flex: 1,
-        height: 24,
+        display: 'flex',
+        width: '100%',
+        minHeight: 48,
         padding: 12,
+        border: 0,
+        background: 'transparent',
+        color: Colors.black,
+        textAlign: 'left',
+        cursor: 'pointer',
     },
     startMenuSpace: {
         flex: 1,
@@ -298,6 +332,8 @@ const styles: StyleSheetCSS = {
         border: `1px solid ${Colors.white}`,
         borderBottomColor: Colors.black,
         borderRightColor: Colors.black,
+        padding: 0,
+        background: Colors.lightGray,
     },
     tabContainer: {
         display: 'flex',
@@ -329,6 +365,8 @@ const styles: StyleSheetCSS = {
         border: `1px solid ${Colors.white}`,
         borderBottomColor: Colors.black,
         borderRightColor: Colors.black,
+        padding: 0,
+        background: Colors.lightGray,
     },
     toolbarTabsContainer: {
         // background: 'blue',

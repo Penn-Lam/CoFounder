@@ -186,6 +186,31 @@ input:active {
     border: none;
 }
 
+button:focus-visible,
+[role='button']:focus-visible,
+a:focus-visible {
+    outline: 2px solid #ffff00;
+    outline-offset: 2px;
+}
+
+.start-menu-option:hover,
+.start-menu-option:focus-visible {
+    background: #000080 !important;
+    color: #ffffff !important;
+}
+
+.mobile-garage-link {
+    position: fixed;
+    z-index: 200000;
+    right: 12px;
+    bottom: 42px;
+    padding: 8px 10px;
+    border: 2px outset #ffffff;
+    background: #c0c0c0;
+    color: #000080;
+    font: 14px MSSerif, sans-serif;
+}
+
 .site-button {
     box-sizing: border-box;
     background: var(--surface-hover);

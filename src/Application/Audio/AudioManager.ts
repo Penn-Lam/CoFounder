@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import Application from '../Application';
 import { AmbienceAudio, ComputerAudio } from './AudioSources';
 import UIEventBus from '../UI/EventBus';
+import { getInitialGarageMuted, saveGarageMuted } from './preferences';
 
 const POS_DEBUG = false;
 const DEFAULT_REF_DISTANCE = 10000;
@@ -30,6 +31,8 @@ export default class Audio {
             ambience: new AmbienceAudio(this),
         };
 
+        this.listener.setMasterVolume(getInitialGarageMuted() ? 0 : 1);
+
         UIEventBus.on('loadingScreenDone', () => {
             setTimeout(() => {
                 const AudioContext =
@@ -41,6 +44,7 @@ export default class Audio {
         });
 
         UIEventBus.on('muteToggle', (mute: boolean) => {
+            saveGarageMuted(mute);
             this.listener.setMasterVolume(mute ? 0 : 1);
         });
     }

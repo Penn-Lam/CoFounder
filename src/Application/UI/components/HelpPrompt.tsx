@@ -29,9 +29,13 @@ const HelpPrompt: React.FC<HelpPromptProps> = () => {
     // make a document listener to listen to clicks
 
     useEffect(() => {
-        setTimeout(() => {
-            typeHelpText(0, '');
-        }, 500);
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setHelpText(HELP_TEXT);
+        } else {
+            setTimeout(() => {
+                typeHelpText(0, '');
+            }, 500);
+        }
         document.addEventListener('mousedown', () => {
             setVisible(false);
         });
