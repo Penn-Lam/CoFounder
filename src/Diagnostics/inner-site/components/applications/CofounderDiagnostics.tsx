@@ -1,6 +1,10 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import Window from '../os/Window';
 import ContentReview from './ContentReview';
+import {
+    PRINT_RECEIPT_EVENT,
+    PrintReceiptDetail,
+} from '../receipt/ReceiptPrinterOverlay';
 
 export interface CofounderDiagnosticsProps extends WindowAppProps {}
 
@@ -46,7 +50,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 const request = async <T,>(
     path: string,
     body?: unknown,
-    method?: 'POST' | 'PUT',
+    method?: 'POST' | 'PUT' | 'DELETE',
 ): Promise<T> => {
     const response = await fetch(path, {
         method: method || (body === undefined ? 'GET' : 'POST'),
@@ -169,6 +173,10 @@ type ReportResponse = {
     status: 'pending' | 'generating' | 'ready';
     notificationReady: boolean;
     report?: PrivateReport;
+};
+type PublicResultState = {
+    published: boolean;
+    myNamePublic: boolean;
 };
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -599,6 +607,9 @@ const PairTestFlow: React.FC<{
     );
     const [copyStatus, setCopyStatus] = useState('');
     const [report, setReport] = useState<PrivateReport | null>(null);
+    const [publicState, setPublicState] = useState<PublicResultState | null>(null);
+    const [showPublishControls, setShowPublishControls] = useState(false);
+    const [showMyName, setShowMyName] = useState(false);
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     const questions: TestQuestion[] = [
@@ -664,6 +675,79 @@ const PairTestFlow: React.FC<{
             window.clearInterval(timer);
         };
     }, [pair.pairId, pair.reportStatus, pair.status]);
+
+    useEffect(() => {
+        if (pair.reportStatus !== 'ready') return;
+        request<PublicResultState>(`/api/pairs/${pair.pairId}/public-result`)
+            .then((state) => {
+                setPublicState(state);
+                setShowMyName(state.myNamePublic);
+            })
+            .catch(() => undefined);
+    }, [pair.pairId, pair.reportStatus]);
+
+    const publishResult = async () => {
+        setBusy(true);
+        setError('');
+        try {
+            const receipt = await request<PrintReceiptDetail>(
+                `/api/pairs/${pair.pairId}/public-result`,
+                { showMyName },
+            );
+            setPublicState({ published: true, myNamePublic: showMyName });
+            setShowPublishControls(false);
+            window.dispatchEvent(
+                new CustomEvent<PrintReceiptDetail>(PRINT_RECEIPT_EVENT, {
+                    detail: receipt,
+                }),
+            );
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '公开结果生成失败。');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const updateNamePermission = async () => {
+        setBusy(true);
+        setError('');
+        try {
+            const state = await request<{ myNamePublic: boolean }>(
+                `/api/pairs/${pair.pairId}/public-name`,
+                { permitted: showMyName },
+                'PUT',
+            );
+            setPublicState((current) => ({
+                published: current?.published || false,
+                myNamePublic: state.myNamePublic,
+            }));
+            setShowPublishControls(false);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '姓名权限更新失败。');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const unpublishResult = async () => {
+        setBusy(true);
+        setError('');
+        try {
+            await request<{ published: false }>(
+                `/api/pairs/${pair.pairId}/public-result`,
+                undefined,
+                'DELETE',
+            );
+            setPublicState((current) => ({
+                published: false,
+                myNamePublic: current?.myNamePublic || false,
+            }));
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : '公开结果撤回失败。');
+        } finally {
+            setBusy(false);
+        }
+    };
 
     const saveProfile = async (event: FormEvent) => {
         event.preventDefault();
@@ -871,6 +955,64 @@ const PairTestFlow: React.FC<{
                                 <li key={prompt.id}>{prompt.copy}</li>
                             ))}
                         </ol>
+                    </section>
+                    <section className="public-result-controls">
+                        <h2>Identity Receipt</h2>
+                        <p>
+                            公开 Receipt 只包含双方授权后的姓名、公开团队类型、三项安全特征和人工文案。
+                            不会包含答案、维度分、Mirror、红线或私人报告内容。
+                        </p>
+                        {publicState?.published && !showPublishControls ? (
+                            <>
+                                <p className="public-result-live">公开结果已发布</p>
+                                <p>
+                                    为避免保存可反查的公开 Token，系统不会恢复旧链接。
+                                    重新打印会生成新链接，并让旧链接立即失效。
+                                </p>
+                                <div className="public-result-actions">
+                                    <button type="button" disabled={busy} onClick={() => setShowPublishControls(true)}>
+                                        姓名权限
+                                    </button>
+                                    <button type="button" disabled={busy} onClick={publishResult}>
+                                        PRINT / SHARE 新链接
+                                    </button>
+                                    <button type="button" disabled={busy} onClick={unpublishResult}>
+                                        撤回公开结果
+                                    </button>
+                                </div>
+                            </>
+                        ) : showPublishControls ? (
+                            <div className="public-permission-panel">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={showMyName}
+                                        onChange={(event) => setShowMyName(event.target.checked)}
+                                    />
+                                    <span>允许在这份 Pair 的公开 Receipt 上显示我的账户显示名</span>
+                                </label>
+                                <p>未勾选时，你的一侧会显示匿名角色。另一位参与者独立决定自己的姓名权限。</p>
+                                <div className="public-result-actions">
+                                    <button type="button" disabled={busy} onClick={() => setShowPublishControls(false)}>
+                                        取消
+                                    </button>
+                                    {publicState?.published ? (
+                                        <button type="button" disabled={busy} onClick={updateNamePermission}>
+                                            保存姓名权限
+                                        </button>
+                                    ) : (
+                                        <button type="button" disabled={busy} onClick={publishResult}>
+                                            生成并打印 Receipt
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <button type="button" disabled={busy} onClick={() => setShowPublishControls(true)}>
+                                PRINT / SHARE
+                            </button>
+                        )}
+                        {error && <div className="pair-save-error" role="alert">{error}</div>}
                     </section>
                     <footer><p>{report.disclaimer.copy}</p></footer>
                     <button type="button" onClick={onExit}>返回首页</button>

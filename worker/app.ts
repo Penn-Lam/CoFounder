@@ -33,6 +33,11 @@ import {
     createReportRepository,
     type ReportRepository,
 } from './report-repository';
+import {
+    createPublicResultRepository,
+    type PublicResultRepository,
+} from './public-result-repository';
+import type { PublicResult } from './public-result-contract';
 
 export type GenerateReportMessage = {
     type: 'generate-report';
@@ -66,6 +71,7 @@ export type AppServices = {
     accounts(environment: Bindings): AccountRepository;
     pairs(environment: Bindings): PairRepository;
     reports?(environment: Bindings): ReportRepository;
+    publicResults?(environment: Bindings): PublicResultRepository;
     enqueueReport?(
         environment: Bindings,
         message: GenerateReportMessage,
@@ -79,6 +85,7 @@ const defaultServices: AppServices = {
     accounts: (environment) => createAccountRepository(environment.DB),
     pairs: (environment) => createPairRepository(environment.DB),
     reports: (environment) => createReportRepository(environment.DB),
+    publicResults: (environment) => createPublicResultRepository(environment.DB),
     enqueueReport: async (environment, message) => {
         await environment.REPORT_QUEUE.send(message);
     },
@@ -115,6 +122,58 @@ const hashInvitationToken = async (token: string) => {
     return Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0'),
     ).join('');
+};
+
+const escapeHtml = (value: string) =>
+    value.replace(
+        /[&<>"']/g,
+        (character) =>
+            ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            })[character]!,
+    );
+
+const publicMetadata = (result: PublicResult | null) => {
+    const title = result
+        ? `${result.names.creator} × ${result.names.partner}｜${result.archetype.title}`
+        : 'Cofounder｜结果不可用';
+    const description = result
+        ? `${result.archetype.englishTitle}。${result.teamQuote}`
+        : '这份 Cofounder 公开结果已撤回或不可用。';
+    return [
+        '<meta name="robots" content="noindex,nofollow" />',
+        `<meta property="og:title" content="${escapeHtml(title)}" />`,
+        `<meta property="og:description" content="${escapeHtml(description)}" />`,
+        '<meta property="og:type" content="website" />',
+        `<meta name="twitter:card" content="summary" />`,
+        `<meta name="twitter:title" content="${escapeHtml(title)}" />`,
+        `<meta name="twitter:description" content="${escapeHtml(description)}" />`,
+        `<title>${escapeHtml(title)}</title>`,
+    ].join('');
+};
+
+const publicResultShell = async (
+    assets: AssetBinding,
+    result: PublicResult | null,
+) => {
+    const shell = await fetchShell(assets, '/desktop/index.html');
+    const html = await shell.text();
+    return new Response(
+        html
+            .replace(/<title>.*?<\/title>/, '')
+            .replace('</head>', `${publicMetadata(result)}</head>`),
+        {
+            status: shell.status,
+            headers: {
+                'content-type': 'text/html; charset=UTF-8',
+                'x-robots-tag': 'noindex, nofollow',
+            },
+        },
+    );
 };
 
 const dispatchReportJobs = async (
@@ -569,6 +628,113 @@ export const createApp = (services: AppServices = defaultServices) => {
         });
     });
 
+    app.get('/api/pairs/:pairId/public-result', async (context) => {
+        if (!services.publicResults) {
+            return context.json({ code: 'PUBLIC_RESULTS_UNAVAILABLE' }, 503);
+        }
+        const state = await services
+            .publicResults(context.env)
+            .getPairState(
+                context.req.param('pairId'),
+                context.get('account').session.user.id,
+            );
+        return state
+            ? context.json(state)
+            : context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+    });
+
+    app.post('/api/pairs/:pairId/public-result', async (context) => {
+        if (!services.publicResults) {
+            return context.json({ code: 'PUBLIC_RESULTS_UNAVAILABLE' }, 503);
+        }
+        const body = (await context.req.json().catch(() => null)) as {
+            showMyName?: unknown;
+        } | null;
+        if (typeof body?.showMyName !== 'boolean') {
+            return context.json({ code: 'NAME_PERMISSION_REQUIRED' }, 400);
+        }
+        const slug = `${services.id()}${services.id()}`.replaceAll('-', '');
+        const slugHash = await hashInvitationToken(slug);
+        const repository = services.publicResults(context.env);
+        const published = await repository.publish({
+            pairId: context.req.param('pairId'),
+            userId: context.get('account').session.user.id,
+            slugHash,
+            showMyName: body.showMyName,
+            publishedAt: services.now().toISOString(),
+        });
+        if (published === 'not_found') {
+            return context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+        }
+        if (published === 'not_ready') {
+            return context.json({ code: 'REPORT_NOT_READY' }, 409);
+        }
+        const lookup = await repository.findBySlugHash(slugHash);
+        if (lookup?.status !== 'published') {
+            return context.json({ code: 'PUBLIC_RESULT_NOT_FOUND' }, 500);
+        }
+        return context.json(
+            {
+                publicPath: `/r/${slug}`,
+                result: lookup.result,
+            },
+            201,
+        );
+    });
+
+    app.put('/api/pairs/:pairId/public-name', async (context) => {
+        if (!services.publicResults) {
+            return context.json({ code: 'PUBLIC_RESULTS_UNAVAILABLE' }, 503);
+        }
+        const body = (await context.req.json().catch(() => null)) as {
+            permitted?: unknown;
+        } | null;
+        if (typeof body?.permitted !== 'boolean') {
+            return context.json({ code: 'INVALID_NAME_PERMISSION' }, 400);
+        }
+        const updated = await services.publicResults(context.env).setNamePermission({
+            pairId: context.req.param('pairId'),
+            userId: context.get('account').session.user.id,
+            permitted: body.permitted,
+            updatedAt: services.now().toISOString(),
+        });
+        return updated
+            ? context.json({ myNamePublic: body.permitted })
+            : context.json({ code: 'PAIR_NOT_FOUND' }, 404);
+    });
+
+    app.delete('/api/pairs/:pairId/public-result', async (context) => {
+        if (!services.publicResults) {
+            return context.json({ code: 'PUBLIC_RESULTS_UNAVAILABLE' }, 503);
+        }
+        const unpublished = await services
+            .publicResults(context.env)
+            .unpublish(
+                context.req.param('pairId'),
+                context.get('account').session.user.id,
+                services.now().toISOString(),
+            );
+        return unpublished
+            ? context.json({ published: false })
+            : context.json({ code: 'PUBLIC_RESULT_NOT_FOUND' }, 404);
+    });
+
+    app.get('/api/public-results/:slug', async (context) => {
+        if (!services.publicResults) {
+            return context.json({ status: 'unavailable' }, 404);
+        }
+        const slug = context.req.param('slug');
+        if (!/^[a-zA-Z0-9]{40,200}$/.test(slug)) {
+            return context.json({ status: 'unavailable' }, 404);
+        }
+        const lookup = await services
+            .publicResults(context.env)
+            .findBySlugHash(await hashInvitationToken(slug));
+        return lookup?.status === 'published'
+            ? context.json(lookup.result)
+            : context.json({ status: 'unavailable' }, 404);
+    });
+
     app.post('/api/pairs/:pairId/invitation', async (context) => {
         const body = (await context.req.json().catch(() => null)) as {
             action?: unknown;
@@ -616,7 +782,21 @@ export const createApp = (services: AppServices = defaultServices) => {
             : asset;
     });
 
-    for (const path of ['/invite/*', '/auth/*', '/r/*']) {
+    app.get('/r/:slug', async (context) => {
+        const slug = context.req.param('slug');
+        const lookup =
+            services.publicResults && /^[a-zA-Z0-9]{40,200}$/.test(slug)
+                ? await services
+                      .publicResults(context.env)
+                      .findBySlugHash(await hashInvitationToken(slug))
+                : null;
+        return publicResultShell(
+            context.env.ASSETS,
+            lookup?.status === 'published' ? lookup.result : null,
+        );
+    });
+
+    for (const path of ['/invite/*', '/auth/*']) {
         app.get(path, (context) =>
             fetchShell(context.env.ASSETS, '/desktop/index.html'),
         );

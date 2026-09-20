@@ -29,6 +29,13 @@ const Credits: React.FC<CreditsProps> = (props) => (
                 Reused from portfolio-inner-site at commit 23cf84a. Publication
                 requires written permission from Henry.
             </p>
+            <p>
+                Receipt Printer component and paper textures adapted from
+                dqnamo/website at commit 55552ac. Tailwind and React 19 bindings
+                were adapted for this React 17 application. Its package metadata
+                declares ISC, but the repository has no license file; confirm
+                redistribution terms before release.
+            </p>
         </div>
     </Window>
 );

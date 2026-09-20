@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import { app, type Bindings } from './app';
 
-const garageHtml = '<html><title>Garage</title></html>';
-const desktopHtml = '<html><title>Cofounder Diagnostics</title></html>';
+const garageHtml = '<html><head><title>Garage</title></head></html>';
+const desktopHtml =
+    '<html><head><title>Cofounder Diagnostics</title></head></html>';
 
 const createBindings = (
     media: Map<string, { body: string; contentType: string }> = new Map(),
@@ -100,7 +101,7 @@ describe('Cofounder application shell', () => {
         expect(await response.text()).toBe('console.log("desktop")');
     });
 
-    it.each(['/invite/pair-token', '/auth/callback', '/r/result-slug'])(
+    it.each(['/invite/pair-token', '/auth/callback'])(
         'bypasses the garage for %s',
         async (path) => {
             const response = await app.request(
@@ -115,6 +116,22 @@ describe('Cofounder application shell', () => {
             );
         },
     );
+
+    it('serves unavailable public result metadata without indexing', async () => {
+        const response = await app.request(
+            '/r/result-slug',
+            undefined,
+            createBindings(),
+        );
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain(
+            '<title>Cofounder｜结果不可用</title>',
+        );
+        expect(response.headers.get('x-robots-tag')).toBe(
+            'noindex, nofollow',
+        );
+    });
 
     it('serves oversized media from R2 with its metadata', async () => {
         const bindings = createBindings(

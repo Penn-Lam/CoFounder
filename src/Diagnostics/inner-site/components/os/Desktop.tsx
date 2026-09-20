@@ -8,6 +8,11 @@ import ShutdownSequence from './ShutdownSequence';
 import Toolbar from './Toolbar';
 import DesktopShortcut, { DesktopShortcutProps } from './DesktopShortcut';
 import { IconName } from '../../assets/icons';
+import PublicResultPage from '../receipt/PublicResultPage';
+import ReceiptPrinterOverlay, {
+    PRINT_RECEIPT_EVENT,
+    PrintReceiptDetail,
+} from '../receipt/ReceiptPrinterOverlay';
 
 export interface DesktopProps {}
 
@@ -38,6 +43,7 @@ const APPLICATIONS: {
 const Desktop: React.FC<DesktopProps> = (props) => {
     const [accountReady, setAccountReady] = useState(false);
     const [windows, setWindows] = useState<DesktopWindows>({});
+    const [receipt, setReceipt] = useState<PrintReceiptDetail | null>(null);
 
     const [shortcuts, setShortcuts] = useState<DesktopShortcutProps[]>([]);
 
@@ -50,6 +56,14 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [shutdown]);
+
+    useEffect(() => {
+        const openReceipt = (event: Event) => {
+            setReceipt((event as CustomEvent<PrintReceiptDetail>).detail);
+        };
+        window.addEventListener(PRINT_RECEIPT_EVENT, openReceipt);
+        return () => window.removeEventListener(PRINT_RECEIPT_EVENT, openReceipt);
+    }, []);
 
     useEffect(() => {
         const newShortcuts: DesktopShortcutProps[] = [];
@@ -169,6 +183,11 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         [getHighestZIndex]
     );
 
+    const publicResultSlug = window.location.pathname.match(/^\/r\/([^/]+)$/)?.[1];
+    if (publicResultSlug) {
+        return <PublicResultPage slug={publicResultSlug} />;
+    }
+
     const isContentReview = window.location.pathname === '/desktop/content-review';
     if (!accountReady && !isContentReview) {
         return <AccountLogin onComplete={() => setAccountReady(true)} />;
@@ -220,6 +239,12 @@ const Desktop: React.FC<DesktopProps> = (props) => {
                 toggleMinimize={toggleMinimize}
                 shutdown={startShutdown}
             />
+            {receipt && (
+                <ReceiptPrinterOverlay
+                    {...receipt}
+                    onClose={() => setReceipt(null)}
+                />
+            )}
         </div>
     ) : (
         <ShutdownSequence

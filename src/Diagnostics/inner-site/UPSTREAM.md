@@ -19,3 +19,19 @@ window chrome.
 The upstream repository does not currently include a license. Do not publish
 or redistribute these files until the project has written permission from
 Henry Heffernan and has checked the bundled fonts and Windows-derived artwork.
+
+## Receipt Printer provenance
+
+The centered receipt animation is adapted from dqnamo's
+[`website`](https://github.com/dqnamo/website) at commit
+`55552acebebe86ec96546dbc90e1012fd587f91a`:
+
+- `components/ReceiptPrinter.tsx`
+- `app/experiments/receipt-printer/receipt-printer-showcase.tsx`
+- `public/textures/{receipt-paper,plastic-noise}.svg`
+
+The compound component structure, stage timing, stepped feed keyframes, paper
+clip path, and reduced-motion behavior are retained. Imports and Tailwind
+classes are adapted for this repository's React 17, Framer Motion 6, and plain
+CSS toolchain. The upstream package metadata declares ISC, but the repository
+does not include a license file; confirm redistribution terms before release.
