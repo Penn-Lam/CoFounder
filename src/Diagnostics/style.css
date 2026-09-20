@@ -1378,11 +1378,15 @@
 }
 
 .receipt-actions {
-    position: relative;
+    position: sticky;
+    bottom: 8px;
     z-index: 4;
     justify-content: center;
     max-width: 640px;
     margin-top: 8px;
+    padding: 8px;
+    border-radius: 22px;
+    background: rgba(9, 16, 17, 0.92);
 }
 
 .receipt-actions button {
