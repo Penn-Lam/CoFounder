@@ -169,7 +169,8 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         [getHighestZIndex]
     );
 
-    if (!accountReady) {
+    const isContentReview = window.location.pathname === '/desktop/content-review';
+    if (!accountReady && !isContentReview) {
         return <AccountLogin onComplete={() => setAccountReady(true)} />;
     }
 

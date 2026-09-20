@@ -26,6 +26,7 @@ import {
     QUESTION_SET_VERSION,
     validateProfile,
 } from './questionnaire';
+import { contentLibraryV1 } from './content-library';
 
 type AssetBinding = {
     fetch(input: Request | URL | string): Promise<Response>;
@@ -152,6 +153,10 @@ export const createApp = (services: AppServices = defaultServices) => {
             consentState: account.consentState,
         });
     });
+
+    app.get('/api/content-library/v1/review', (context) =>
+        context.json(contentLibraryV1),
+    );
 
     app.post('/api/account/registration', async (context) => {
         const session = await services

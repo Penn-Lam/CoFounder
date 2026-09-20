@@ -150,6 +150,76 @@
     font-size: 12px;
 }
 
+.content-review {
+    display: block;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.content-review header,
+.content-review section,
+.content-review article,
+.content-review li {
+    display: block;
+}
+
+.content-review h2 {
+    margin-top: 42px;
+    border-bottom: 2px solid #102a2a;
+    padding-bottom: 8px;
+}
+
+.review-grid,
+.band-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.band-row h3 {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+    text-transform: uppercase;
+}
+
+.review-card,
+.prompt-list li {
+    border: 1px solid #102a2a;
+    background: #ffffff;
+    padding: 14px;
+}
+
+.review-card code,
+.prompt-list code,
+.prompt-list small {
+    font-family: Terminal, monospace;
+    color: #7a5a00;
+}
+
+.review-secondary {
+    font-family: Terminal, monospace;
+}
+
+.review-card blockquote {
+    margin: 8px 0;
+    padding-left: 10px;
+    border-left: 3px solid #008080;
+}
+
+.prompt-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px;
+    padding: 0;
+    list-style-position: inside;
+}
+
+.prompt-list small {
+    display: block;
+    margin-top: 5px;
+}
+
 .pair-profile,
 .pair-question,
 .pair-review,

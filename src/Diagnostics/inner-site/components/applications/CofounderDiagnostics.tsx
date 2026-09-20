@@ -1,5 +1,6 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import Window from '../os/Window';
+import ContentReview from './ContentReview';
 
 export interface CofounderDiagnosticsProps extends WindowAppProps {}
 
@@ -1024,6 +1025,7 @@ const PairTestFlow: React.FC<{
 
 const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     const compact = window.innerWidth < 640;
+    const contentReviewPath = window.location.pathname === '/desktop/content-review';
     const invitationToken = window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1] || '';
     const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
     const [activePairs, setActivePairs] = useState<PairState[]>([]);
@@ -1073,7 +1075,8 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     };
 
     useEffect(() => {
-        if (invitationToken) loadInvitation();
+        if (contentReviewPath) setLoading(false);
+        else if (invitationToken) loadInvitation();
         else loadHome();
     }, []);
 
@@ -1185,7 +1188,9 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                 <main
                     className={`diagnostics-content${currentPair ? ' pair-active' : ''}`}
                 >
-                    {currentPair && questionnaire ? (
+                    {contentReviewPath ? (
+                        <ContentReview />
+                    ) : currentPair && questionnaire ? (
                         <PairTestFlow
                             initialPair={currentPair}
                             questionnaire={questionnaire}

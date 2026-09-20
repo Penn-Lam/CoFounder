@@ -50,6 +50,21 @@ const createBindings = (
 });
 
 describe('Cofounder application shell', () => {
+    it('serves the complete content review API without a Pair', async () => {
+        const response = await app.request(
+            '/api/content-library/v1/review',
+            undefined,
+            createBindings(),
+        );
+        const library = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(library.version).toBe('cofounder-content-v1');
+        expect(library.publicArchetypes).toHaveLength(8);
+        expect(library.privateRiskPatterns).toHaveLength(5);
+        expect(library.prompts.length).toBeGreaterThanOrEqual(40);
+    });
+
     it('serves the garage at the root', async () => {
         const response = await app.request('/', undefined, createBindings());
 
@@ -57,7 +72,7 @@ describe('Cofounder application shell', () => {
         expect(await response.text()).toContain('<title>Garage</title>');
     });
 
-    it.each(['/desktop', '/desktop/pairs'])(
+    it.each(['/desktop', '/desktop/pairs', '/desktop/content-review'])(
         'serves the Diagnostics shell for %s',
         async (path) => {
             const response = await app.request(
