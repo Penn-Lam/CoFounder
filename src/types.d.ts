@@ -4,9 +4,30 @@ type Resource =
     | ModelResource
     | AudioResource;
 
+declare module '*.png' {
+    const source: string;
+    export default source;
+}
+
 declare interface StyleSheetCSS {
     [key: string]: React.CSSProperties;
 }
+
+declare interface WindowAppProps {
+    onClose: () => void;
+    onInteract: () => void;
+    onMinimize: () => void;
+}
+
+declare type DesktopWindows = {
+    [key in string]: {
+        zIndex: number;
+        component: React.ReactElement;
+        minimized: boolean;
+        name: string;
+        icon: import('./Diagnostics/inner-site/assets/icons').IconName;
+    };
+};
 
 type TextureResource = {
     name: string;

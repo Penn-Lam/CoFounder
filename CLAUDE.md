@@ -19,6 +19,7 @@ package.json / bun.lock - Bun 版本与运行时/构建依赖；审计修复走�
 package.json dev/start - 先构建并填充本地 R2，再由 Wrangler 提供与生产一致的 Worker 路由
 wrangler.jsonc - Worker Static Assets 与 MEDIA R2 绑定；开发、生产共用路由模型
 src/tsconfig.json / worker/tsconfig.json - 前端与 Worker 分开做严格类型检查；@types/node 钉在 18.x
+src/Diagnostics/inner-site/UPSTREAM.md - Henry `portfolio-inner-site` 的复用来源与未获许可前禁止发布的约束
 </config>
 
 ## Agent skills

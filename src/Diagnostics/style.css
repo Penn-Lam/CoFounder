@@ -1,180 +1,209 @@
-:root {
-    color: #102a2a;
-    font-family: 'Courier New', 'Microsoft YaHei', monospace;
-    background: #c9c6b8;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-html,
-body,
 #diagnostics {
-    min-height: 100%;
-    margin: 0;
+    height: 100%;
 }
 
-body {
-    min-height: 100vh;
-    background:
-        linear-gradient(rgba(16, 42, 42, 0.08) 1px, transparent 1px), #c9c6b8;
-    background-size: 100% 4px;
-}
-
-.desktop-shell {
-    min-height: 100vh;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    padding: 18px;
-}
-
-.system-bar,
-.window-title {
-    display: flex;
-    justify-content: space-between;
-    gap: 24px;
-    background: #102a2a;
-    color: #f0c84b;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    padding: 10px 12px;
-}
-
-.window {
-    width: min(780px, 100%);
-    margin: auto;
-    border: 3px solid #102a2a;
-    box-shadow: 10px 10px 0 rgba(16, 42, 42, 0.22);
-    background: #e8e4d4;
-}
-
-.window-body {
-    padding: clamp(24px, 6vw, 62px);
-}
-
-.eyebrow {
-    color: #7a5a00;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-}
-
-h1 {
-    max-width: 680px;
-    margin: 18px 0;
-    font-family: Georgia, 'Noto Serif SC', serif;
-    font-size: clamp(34px, 6vw, 64px);
-    line-height: 1.04;
-    letter-spacing: -0.04em;
-}
-
-.description {
-    max-width: 620px;
-    font-size: 16px;
-    line-height: 1.75;
-}
-
-.status-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border: 2px solid #102a2a;
-    margin: 32px 0;
-}
-
-.status-grid div {
+.diagnostics-browser {
+    flex: 1;
     min-width: 0;
-    padding: 12px;
-    border-right: 1px solid #102a2a;
+    flex-direction: column;
+    background: #ffffff;
 }
 
-.status-grid div:last-child {
-    border-right: 0;
+.browser-menu {
+    min-height: 24px;
+    align-items: center;
+    gap: 20px;
+    padding: 0 10px;
+    border-bottom: 1px solid #86898d;
+    background: #c3c6ca;
 }
 
-dt {
-    color: #7a5a00;
-    font-size: 11px;
-    font-weight: 700;
+.browser-menu span,
+.address-bar span,
+.address-bar strong {
+    font-family: MSSerif, sans-serif;
+    font-size: 12px;
+    font-weight: normal;
 }
 
-dd {
+.address-bar {
+    min-height: 28px;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    border-bottom: 1px solid #86898d;
+    background: #c3c6ca;
+}
+
+.address-bar div {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
-    margin: 6px 0 0;
+    padding: 3px 6px;
+    border: 1px solid #ffffff;
+    border-top-color: #000000;
+    border-left-color: #000000;
+    background: #ffffff;
+    font-family: MSSerif, sans-serif;
     font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.actions {
-    display: flex;
+.diagnostics-content {
+    flex: 1;
+    overflow: auto;
+    flex-direction: column;
+    padding: clamp(20px, 4vw, 40px);
+    background: #fffdf4;
+    color: #102a2a;
+    user-select: text;
+}
+
+.diagnostics-content * {
+    user-select: text;
+}
+
+.diagnostics-kicker {
+    color: #7a5a00;
+    font-family: Terminal, monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+}
+
+.diagnostics-content h1 {
+    max-width: 760px;
+    margin: 14px 0;
+    font-family: MillenniumBold, 'Microsoft YaHei', serif;
+    font-size: clamp(34px, 5vw, 58px);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+}
+
+.diagnostics-description {
+    max-width: 680px;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.diagnostics-status {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 22px 0;
+    border: 2px solid #102a2a;
+}
+
+.diagnostics-status div {
+    min-width: 0;
+    flex-direction: column;
+    padding: 12px;
+    border-right: 1px solid #102a2a;
+}
+
+.diagnostics-status div:last-child {
+    border-right: 0;
+}
+
+.diagnostics-status b,
+.diagnostics-status span {
+    overflow: hidden;
+    font-family: Terminal, monospace;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diagnostics-status b {
+    margin-bottom: 6px;
+    color: #7a5a00;
+}
+
+.diagnostics-actions {
     align-items: center;
     flex-wrap: wrap;
-    gap: 18px;
+    gap: 16px;
 }
 
-button,
-.actions a {
-    border: 2px solid #102a2a;
-    color: #102a2a;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 12px 16px;
-}
-
-button {
-    background: #f0c84b;
-    opacity: 0.65;
-}
-
-.actions a {
-    background: transparent;
+.diagnostics-actions button,
+.diagnostics-actions a,
+.shutdown-sequence button {
+    box-shadow:
+        inset -1px -1px #000000,
+        inset 1px 1px #ffffff,
+        inset -2px -2px #86898d,
+        inset 2px 2px #c3c6ca;
+    border: 0;
+    border-radius: 0;
+    background: #c3c6ca;
+    color: #000000;
+    font-family: MSSerif, sans-serif;
+    font-size: 13px;
+    padding: 10px 16px;
     text-decoration: none;
 }
 
-footer {
+.diagnostics-actions button:disabled {
+    color: #86898d;
+}
+
+.diagnostics-disclaimer {
+    margin-top: auto;
     padding-top: 18px;
-    font-size: 11px;
-    text-align: center;
+    font-size: 12px;
+}
+
+.credits-content,
+.shutdown-sequence {
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    overflow: auto;
+    padding: 40px;
+    background: #fffdf4;
+}
+
+.shutdown-sequence {
+    min-height: 100vh;
+    align-items: flex-start;
+    justify-content: center;
+    background: #000000;
+    color: #ffffff;
 }
 
 @media (max-width: 640px) {
-    .desktop-shell {
-        padding: 10px;
+    .browser-menu {
+        gap: 12px;
     }
 
-    .system-bar span:last-child {
-        display: none;
+    .diagnostics-content {
+        padding: 24px 18px 48px;
     }
 
-    .window {
-        margin: 24px auto;
-        box-shadow: 6px 6px 0 rgba(16, 42, 42, 0.22);
+    .diagnostics-content h1 {
+        font-size: 38px;
     }
 
-    .status-grid {
+    .diagnostics-status {
         grid-template-columns: 1fr;
     }
 
-    .status-grid div,
-    .status-grid div:last-child {
+    .diagnostics-status div,
+    .diagnostics-status div:last-child {
         border-right: 0;
         border-bottom: 1px solid #102a2a;
     }
 
-    .status-grid div:last-child {
+    .diagnostics-status div:last-child {
         border-bottom: 0;
     }
 
-    .actions {
+    .diagnostics-actions {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .actions a,
-    button {
+    .diagnostics-actions a,
+    .diagnostics-actions button {
         text-align: center;
     }
 }
