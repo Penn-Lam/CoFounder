@@ -582,6 +582,23 @@
     min-height: 40px;
 }
 
+.account-form .account-otp-input {
+    font-family: Terminal, 'Courier New', monospace;
+    font-size: 28px;
+    letter-spacing: 0.35em;
+    text-align: center;
+}
+
+.otp-countdown {
+    margin: 0;
+    color: #000080;
+    font-family: Terminal, monospace;
+}
+
+.otp-countdown.expired {
+    color: #850000;
+}
+
 .account-form button,
 .account-ready button {
     min-height: 38px;

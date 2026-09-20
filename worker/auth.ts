@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { emailOTP } from 'better-auth/plugins';
+import { renderOtpEmail } from './email-template';
 
 export const OTP_EXPIRES_IN_SECONDS = 10 * 60;
 export const OTP_ALLOWED_ATTEMPTS = 5;
@@ -79,6 +80,7 @@ const sendOtpEmail = async (
     email: string,
     otp: string,
 ) => {
+    const emailContent = renderOtpEmail(otp);
     const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -88,12 +90,30 @@ const sendOtpEmail = async (
         body: JSON.stringify({
             from: environment.EMAIL_FROM,
             to: [email],
-            subject: `${otp} — Cofounder 登录验证码`,
-            html: `<p>你的 Cofounder 验证码是：</p><p style="font-size:28px"><strong>${otp}</strong></p><p>10 分钟内有效。请勿转发给任何人。</p>`,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
         }),
     });
 
     if (!response.ok) {
+        const providerError = (await response.json().catch(() => null)) as {
+            name?: unknown;
+            message?: unknown;
+        } | null;
+        console.error('Resend OTP delivery failed', {
+            status: response.status,
+            providerCode:
+                typeof providerError?.name === 'string'
+                    ? providerError.name
+                    : 'unknown',
+            providerMessage:
+                typeof providerError?.message === 'string'
+                    ? providerError.message
+                    : 'unavailable',
+            keyLength: environment.RESEND_API_KEY.length,
+            keyPrefixValid: environment.RESEND_API_KEY.startsWith('re_'),
+        });
         throw new OtpRequestError(
             'OTP_DELIVERY_FAILED',
             503,

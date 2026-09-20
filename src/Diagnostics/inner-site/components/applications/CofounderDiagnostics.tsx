@@ -213,6 +213,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
     const [resendSeconds, setResendSeconds] = useState(0);
+    const [otpExpiresSeconds, setOtpExpiresSeconds] = useState(0);
     const [verifiedAccount, setVerifiedAccount] = useState(false);
     const loadAccount = async (continueVerifiedRegistration = false) => {
         const account = await request<AccountResponse>('/api/account');
@@ -247,6 +248,15 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
         return () => window.clearInterval(timer);
     }, [resendSeconds]);
 
+    useEffect(() => {
+        if (otpExpiresSeconds <= 0) return;
+        const timer = window.setInterval(
+            () => setOtpExpiresSeconds((seconds) => Math.max(0, seconds - 1)),
+            1000,
+        );
+        return () => window.clearInterval(timer);
+    }, [otpExpiresSeconds]);
+
     const run = async (action: () => Promise<void>) => {
         setBusy(true);
         setError('');
@@ -267,6 +277,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
                 type: 'sign-in',
             });
             setResendSeconds(60);
+            setOtpExpiresSeconds(10 * 60);
             setStage('otp');
         });
     };
@@ -394,10 +405,11 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
                         {stage === 'otp' && (
                             <form className="account-form" onSubmit={verifyOtp}>
                                 <label className="field-label" htmlFor="account-otp">
-                                    VERIFICATION CODE
+                                    6 位验证码
                                 </label>
                                 <input
                                     id="account-otp"
+                                    className="account-otp-input"
                                     inputMode="numeric"
                                     autoComplete="one-time-code"
                                     pattern="[0-9]{6}"
@@ -407,11 +419,24 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
                                     onChange={(event) => setOtp(event.target.value)}
                                 />
                                 <p className="account-note">验证码已发送到 {email}</p>
+                                <p
+                                    className={
+                                        otpExpiresSeconds > 0
+                                            ? 'otp-countdown'
+                                            : 'otp-countdown expired'
+                                    }
+                                    role="status"
+                                >
+                                    {otpExpiresSeconds > 0
+                                        ? `有效期 ${String(Math.floor(otpExpiresSeconds / 60)).padStart(2, '0')}:${String(otpExpiresSeconds % 60).padStart(2, '0')}`
+                                        : '验证码已过期，请重新发送。'}
+                                </p>
                                 <div className="form-actions">
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setOtp('');
+                                            setOtpExpiresSeconds(0);
                                             setStage('email');
                                         }}
                                     >
@@ -428,7 +453,12 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({ onComplete }) => {
                                             ? `${resendSeconds}s 后重发`
                                             : '重新发送'}
                                     </button>
-                                    <button type="submit" disabled={busy}>验证并登录</button>
+                                    <button
+                                        type="submit"
+                                        disabled={busy || otpExpiresSeconds <= 0}
+                                    >
+                                        验证并登录
+                                    </button>
                                 </div>
                             </form>
                         )}

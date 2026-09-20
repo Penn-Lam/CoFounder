@@ -36,8 +36,31 @@ install_mint() {
     ln -sfn "$HOME/.bun/bin/mint" "$HOME/.local/bin/mint"
 }
 
+write_dev_vars() {
+    local required=(BETTER_AUTH_SECRET RESEND_API_KEY EMAIL_FROM)
+    local name value escaped
+
+    for name in "${required[@]}"; do
+        if [[ -z "${!name:-}" ]]; then
+            printf 'Skipping .dev.vars: %s is not configured for this project.\n' "$name"
+            return
+        fi
+    done
+
+    umask 077
+    : > .dev.vars
+    for name in "${required[@]}"; do
+        value="${!name}"
+        escaped="${value//\\/\\\\}"
+        escaped="${escaped//\"/\\\"}"
+        printf '%s="%s"\n' "$name" "$escaped" >> .dev.vars
+    done
+    printf 'Wrote local Worker bindings from project configuration.\n'
+}
+
 run_step "Install pinned Bun toolchain" install_bun
 run_step "Ensure Mintlify CLI is available" install_mint
 run_step "Install repository dependencies" bun install --frozen-lockfile
+run_step "Write local Worker bindings" write_dev_vars
 
 printf '\nOrb setup complete.\n'
