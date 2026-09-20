@@ -9,6 +9,9 @@ describe('OTP email template', () => {
         expect(email.html).toContain('482913');
         expect(email.text).toContain('482913');
         expect(email.html).toContain('10 分钟');
+        expect(email.html).toContain(
+            'https://react-email-demo-b2ks236lh-resend.vercel.app/static/dither/dither-image-1.png',
+        );
         expect(email.html).not.toContain('href=');
     });
 

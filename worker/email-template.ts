@@ -31,16 +31,7 @@ export const renderOtpEmail = (otp: string): OtpEmail => {
           </tr>
           <tr>
             <td style="padding:0 24px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #2b2b2b;background:#191919;">
-                <tr>
-                  <td style="padding:28px 24px;color:#818181;font-family:'Courier New',monospace;font-size:12px;line-height:1.8;letter-spacing:1px;">
-                    SYSTEM: READY<br>
-                    CHANNEL: EMAIL OTP<br>
-                    <span style="color:#ffffff;font-size:20px;letter-spacing:3px;">PAIR DIAGNOSTICS</span>
-                  </td>
-                  <td width="12" style="background:#614500;font-size:0;">&nbsp;</td>
-                </tr>
-              </table>
+              <img src="https://react-email-demo-b2ks236lh-resend.vercel.app/static/dither/dither-image-1.png" width="592" alt="" style="display:block;width:100%;max-width:592px;height:auto;border:0;">
             </td>
           </tr>
           <tr>
