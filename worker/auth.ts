@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { emailOTP } from 'better-auth/plugins';
+import { EmailDeliveryError, sendEmail } from './email-delivery';
 import { renderOtpEmail } from './email-template';
 
 export const OTP_EXPIRES_IN_SECONDS = 10 * 60;
@@ -84,35 +85,16 @@ const sendOtpEmail = async (
     otp: string,
 ) => {
     const emailContent = renderOtpEmail(otp);
-    const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            authorization: `Bearer ${environment.RESEND_API_KEY}`,
-            'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-            from: environment.EMAIL_FROM,
-            to: [email],
-            subject: emailContent.subject,
-            html: emailContent.html,
-            text: emailContent.text,
-        }),
-    });
-
-    if (!response.ok) {
-        const providerError = (await response.json().catch(() => null)) as {
-            name?: unknown;
-            message?: unknown;
-        } | null;
+    try {
+        await sendEmail(environment, email, emailContent);
+    } catch (error) {
         console.error('Resend OTP delivery failed', {
-            status: response.status,
+            status: error instanceof EmailDeliveryError ? error.status : 0,
             providerCode:
-                typeof providerError?.name === 'string'
-                    ? providerError.name
-                    : 'unknown',
+                error instanceof EmailDeliveryError ? error.providerCode : 'unknown',
             providerMessage:
-                typeof providerError?.message === 'string'
-                    ? providerError.message
+                error instanceof EmailDeliveryError
+                    ? error.providerMessage
                     : 'unavailable',
             keyLength: environment.RESEND_API_KEY.length,
             keyPrefixValid: environment.RESEND_API_KEY.startsWith('re_'),

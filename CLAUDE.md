@@ -6,7 +6,7 @@ React 17 + Three.js 0.137 + Webpack 5 + Cloudflare Workers + Hono
 src/ - 前端运行时（3D Garage Application + /desktop Diagnostics）
 bundler/ - Webpack 开发/生产配置
 worker/ - Cloudflare Worker/Hono 同源路由、Better Auth Account 边界与 R2 媒体读取
-migrations/ - D1 的 Better Auth、版本化 consent、OTP 限流与隐私数据生命周期迁移
+migrations/ - D1 的 Better Auth、consent、OTP、隐私生命周期与 Pair 保留策略迁移
 static/ - 25 MiB 内的模型、贴图、音频、图标等构建期拷贝资源
 r2-assets/ - 超过 Workers Static Assets 限制、需上传 R2 的媒体源文件
 .agents/ - Amp Orb 初始化与唤醒生命周期脚本

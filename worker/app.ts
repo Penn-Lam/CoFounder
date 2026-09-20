@@ -43,6 +43,7 @@ import {
     createPrivacyRepository,
     type PrivacyRepository,
 } from './privacy-repository';
+import { runDefaultPairLifecycle } from './pair-lifecycle';
 
 export type GenerateReportMessage = {
     type: 'generate-report';
@@ -978,12 +979,18 @@ const worker: ExportedHandler<Bindings, GenerateReportMessage> = {
         }
     },
     async scheduled(_controller, environment) {
+        const now = new Date();
         const repository = createReportRepository(environment.DB);
-        await dispatchReportJobs(
-            repository,
-            (message) => environment.REPORT_QUEUE.send(message).then(() => undefined),
-            new Date().toISOString(),
-        );
+        try {
+            await dispatchReportJobs(
+                repository,
+                (message) => environment.REPORT_QUEUE.send(message).then(() => undefined),
+                now.toISOString(),
+            );
+        } catch {
+            console.error('Scheduled report dispatch remains pending');
+        }
+        await runDefaultPairLifecycle(environment, now);
     },
 };
 

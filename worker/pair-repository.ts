@@ -31,10 +31,7 @@ export type PairTestRecord = {
 };
 
 export type PairWriteResult =
-    | PairTestRecord
-    | 'not_found'
-    | 'sealed'
-    | 'conflict';
+    PairTestRecord | 'not_found' | 'sealed' | 'conflict';
 
 export type PairInvitation = {
     pairId: string;
@@ -44,9 +41,7 @@ export type PairInvitation = {
 
 export type PairClaimResult = PairTestRecord | 'unavailable' | 'same_account';
 export type PairInvitationWriteResult =
-    | PairTestRecord
-    | 'not_found'
-    | 'invitation_locked';
+    PairTestRecord | 'not_found' | 'invitation_locked';
 
 export interface PairRepository {
     create(input: {
@@ -116,21 +111,22 @@ const toRecord = (row: PairRow): PairTestRecord => {
         : null;
     const partnerStarted = Boolean(
         partnerState &&
-            (partnerState.profile || Object.keys(partnerState.answers).length > 0),
+        (partnerState.profile || Object.keys(partnerState.answers).length > 0),
     );
-    const lifecycle = row.counterpart_withdrawn === 1
-        ? 'participant_withdrawn'
-        : row.report_status === 'ready'
-        ? 'report_ready'
-        : row.report_status === 'generating'
-          ? 'report_generating'
-          : !row.submitted_at && role === 'creator'
-            ? 'creator_draft'
-            : !row.partner_user_id || !partnerStarted
-              ? 'waiting_partner'
-              : row.partner_submitted_at
-                ? 'pair_complete'
-                : 'partner_in_progress';
+    const lifecycle =
+        row.counterpart_withdrawn === 1
+            ? 'participant_withdrawn'
+            : row.report_status === 'ready'
+              ? 'report_ready'
+              : row.report_status === 'generating'
+                ? 'report_generating'
+                : !row.submitted_at && role === 'creator'
+                  ? 'creator_draft'
+                  : !row.partner_user_id || !partnerStarted
+                    ? 'waiting_partner'
+                    : row.partner_submitted_at
+                      ? 'pair_complete'
+                      : 'partner_in_progress';
 
     return {
         pairId: row.pair_id,
@@ -144,15 +140,16 @@ const toRecord = (row: PairRow): PairTestRecord => {
                     ? 'started'
                     : 'not_started'
                 : null,
-        invitationStatus: row.counterpart_withdrawn === 1
-            ? 'unavailable'
-            : row.claimed_at
-            ? 'claimed'
-            : !row.submitted_at
-              ? 'unavailable'
-              : row.invite_token_hash
-                ? 'active'
-                : 'cancelled',
+        invitationStatus:
+            row.counterpart_withdrawn === 1
+                ? 'unavailable'
+                : row.claimed_at
+                  ? 'claimed'
+                  : !row.submitted_at
+                    ? 'unavailable'
+                    : row.invite_token_hash
+                      ? 'active'
+                      : 'cancelled',
         questionSetVersion: row.question_set_version,
         revision: row.revision,
         state: JSON.parse(row.state_json) as PairTestState,
@@ -182,6 +179,25 @@ const pairSelect = `SELECT pt.pair_id, pt.user_id, pt.question_set_version, pt.r
                           ELSE 'creator'
                       END`;
 
+const clearExpiryReminder = (
+    database: D1Database,
+    pairId: string,
+    lastActivityAt: string,
+) =>
+    database
+        .prepare(
+            `UPDATE pair_event
+             SET event_type = 'expiry_reminder_cancelled:' ||
+                              substr(event_type, length('expiry_reminder:') + 1)
+             WHERE pair_id = ? AND event_type LIKE 'expiry_reminder:%'
+               AND delivered_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM cofounder_pair
+                   WHERE pair_id = ? AND last_activity_at = ?
+               )`,
+        )
+        .bind(pairId, pairId, lastActivityAt);
+
 export const createPairRepository = (database: D1Database): PairRepository => {
     const get = async (pairId: string, userId: string) => {
         const row = await database
@@ -198,7 +214,9 @@ export const createPairRepository = (database: D1Database): PairRepository => {
     const classifyFailedWrite = async (pairId: string, userId: string) => {
         const current = await get(pairId, userId);
         if (!current) return 'not_found' as const;
-        return current.submittedAt ? ('sealed' as const) : ('conflict' as const);
+        return current.submittedAt
+            ? ('sealed' as const)
+            : ('conflict' as const);
     };
 
     const findInvitation = (tokenHash: string) =>
@@ -229,8 +247,8 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                 database
                     .prepare(
                         `INSERT INTO cofounder_pair
-                            (pair_id, creator_user_id, created_at, updated_at)
-                         SELECT ?, ?, ?, ?
+                            (pair_id, creator_user_id, created_at, updated_at, last_activity_at)
+                         SELECT ?, ?, ?, ?, ?
                          WHERE (
                              SELECT COUNT(*)
                              FROM cofounder_pair pair
@@ -243,7 +261,14 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                                )
                          ) < 3`,
                     )
-                    .bind(pairId, userId, createdAt, createdAt, userId),
+                    .bind(
+                        pairId,
+                        userId,
+                        createdAt,
+                        createdAt,
+                        createdAt,
+                        userId,
+                    ),
                 database
                     .prepare(
                         `INSERT INTO pair_test
@@ -267,9 +292,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                     ),
             ]);
 
-            return results[0].meta.changes === 1
-                ? get(pairId, userId)
-                : null;
+            return results[0].meta.changes === 1 ? get(pairId, userId) : null;
         },
         async listForUser(userId) {
             const result = await database
@@ -285,9 +308,10 @@ export const createPairRepository = (database: D1Database): PairRepository => {
         },
         get,
         async save(pairId, userId, expectedRevision, state, updatedAt) {
-            const result = await database
-                .prepare(
-                    `UPDATE pair_test
+            const results = await database.batch([
+                database
+                    .prepare(
+                        `UPDATE pair_test
                      SET state_json = ?, revision = revision + 1, updated_at = ?
                      WHERE pair_id = ? AND user_id = ? AND revision = ?
                        AND submitted_at IS NULL
@@ -295,18 +319,37 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                            SELECT 1 FROM pair_participant_withdrawal
                            WHERE pair_id = ?
                        )`,
-                )
-                .bind(
-                    JSON.stringify(state),
-                    updatedAt,
-                    pairId,
-                    userId,
-                    expectedRevision,
-                    pairId,
-                )
-                .run();
+                    )
+                    .bind(
+                        JSON.stringify(state),
+                        updatedAt,
+                        pairId,
+                        userId,
+                        expectedRevision,
+                        pairId,
+                    ),
+                database
+                    .prepare(
+                        `UPDATE cofounder_pair SET updated_at = ?, last_activity_at = ?
+                         WHERE pair_id = ? AND EXISTS (
+                             SELECT 1 FROM pair_test
+                             WHERE pair_id = ? AND user_id = ?
+                               AND revision = ? AND updated_at = ?
+                         )`,
+                    )
+                    .bind(
+                        updatedAt,
+                        updatedAt,
+                        pairId,
+                        pairId,
+                        userId,
+                        expectedRevision + 1,
+                        updatedAt,
+                    ),
+                clearExpiryReminder(database, pairId, updatedAt),
+            ]);
 
-            return result.meta.changes === 1
+            return results[0].meta.changes === 1
                 ? (await get(pairId, userId))!
                 : classifyFailedWrite(pairId, userId);
         },
@@ -328,12 +371,20 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                            WHERE pair_id = ?
                        )`,
                 )
-                .bind(submittedAt, submittedAt, pairId, userId, expectedRevision, pairId);
+                .bind(
+                    submittedAt,
+                    submittedAt,
+                    pairId,
+                    userId,
+                    expectedRevision,
+                    pairId,
+                );
             const updatePair = invitationTokenHash
                 ? database
                       .prepare(
                           `UPDATE cofounder_pair
-                           SET invite_token_hash = ?, invite_created_at = ?, updated_at = ?
+                           SET invite_token_hash = ?, invite_created_at = ?, updated_at = ?,
+                               last_activity_at = ?
                            WHERE pair_id = ? AND creator_user_id = ?
                              AND partner_user_id IS NULL
                              AND claimed_at IS NULL
@@ -348,6 +399,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                           invitationTokenHash,
                           submittedAt,
                           submittedAt,
+                          submittedAt,
                           pairId,
                           userId,
                           pairId,
@@ -358,7 +410,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                 : database
                       .prepare(
                           `UPDATE cofounder_pair
-                           SET updated_at = ?
+                           SET updated_at = ?, last_activity_at = ?
                            WHERE pair_id = ? AND partner_user_id = ?
                              AND EXISTS (
                                  SELECT 1 FROM pair_test
@@ -367,6 +419,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                              )`,
                       )
                       .bind(
+                          submittedAt,
                           submittedAt,
                           pairId,
                           userId,
@@ -399,6 +452,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                 updatePair,
                 beginReport,
                 enqueueReport,
+                clearExpiryReminder(database, pairId, submittedAt),
             ]);
 
             return results[0].meta.changes === 1
@@ -415,7 +469,8 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                 database
                     .prepare(
                         `UPDATE cofounder_pair
-                         SET partner_user_id = ?, claimed_at = ?, updated_at = ?
+                         SET partner_user_id = ?, claimed_at = ?, updated_at = ?,
+                             last_activity_at = ?
                          WHERE invite_token_hash = ? AND partner_user_id IS NULL
                            AND claimed_at IS NULL
                              AND creator_user_id <> ?
@@ -424,7 +479,14 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                                  WHERE pair_id = cofounder_pair.pair_id
                              )`,
                     )
-                    .bind(userId, claimedAt, claimedAt, tokenHash, userId),
+                    .bind(
+                        userId,
+                        claimedAt,
+                        claimedAt,
+                        claimedAt,
+                        tokenHash,
+                        userId,
+                    ),
                 database
                     .prepare(
                         `INSERT INTO pair_test
@@ -455,6 +517,7 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                            AND invite_token_hash = ?`,
                     )
                     .bind(invitation.pairId, userId, tokenHash),
+                clearExpiryReminder(database, invitation.pairId, claimedAt),
             ]);
 
             return results[0].meta.changes === 1
@@ -490,7 +553,9 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                 )
                 .run();
             if (result.meta.changes === 1) return (await get(pairId, userId))!;
-            return (await get(pairId, userId)) ? 'invitation_locked' : 'not_found';
+            return (await get(pairId, userId))
+                ? 'invitation_locked'
+                : 'not_found';
         },
         async cancelInvitation(pairId, userId, updatedAt) {
             const result = await database
@@ -513,7 +578,9 @@ export const createPairRepository = (database: D1Database): PairRepository => {
                 .bind(updatedAt, pairId, userId, pairId, userId)
                 .run();
             if (result.meta.changes === 1) return (await get(pairId, userId))!;
-            return (await get(pairId, userId)) ? 'invitation_locked' : 'not_found';
+            return (await get(pairId, userId))
+                ? 'invitation_locked'
+                : 'not_found';
         },
     };
 };
