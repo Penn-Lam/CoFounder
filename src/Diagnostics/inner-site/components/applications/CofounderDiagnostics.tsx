@@ -1693,7 +1693,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             minimizeWindow={props.onMinimize}
             bottomLeftText={
                 currentPair
-                    ? `测试 ${currentPair.pairId}`
+                    ? undefined
                     : invitationToken
                       ? '搭档邀请'
                       : '准备就绪'

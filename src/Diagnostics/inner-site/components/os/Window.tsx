@@ -192,6 +192,7 @@ const Window: React.FC<WindowProps> = (props) => {
     return (
         <div onMouseDown={onWindowInteract} style={styles.container}>
             <div
+                className="os-window"
                 style={Object.assign({}, styles.window, {
                     width,
                     height,
@@ -200,8 +201,8 @@ const Window: React.FC<WindowProps> = (props) => {
                 })}
                 ref={windowRef}
             >
-                <div style={styles.windowBorderOuter}>
-                    <div style={styles.windowBorderInner}>
+                <div className="os-window-border-outer" style={styles.windowBorderOuter}>
+                    <div className="os-window-border-inner" style={styles.windowBorderInner}>
                         <div
                             className="window-drag-hitbox"
                             style={styles.dragHitbox}
@@ -260,12 +261,13 @@ const Window: React.FC<WindowProps> = (props) => {
                             </div>
                         </div>
                         <div
+                            className="os-window-content-outer"
                             style={Object.assign({}, styles.contentOuter, {
                                 // zIndex: isDragging || isResizing ? 0 : 100,
                             })}
                         >
-                            <div style={styles.contentInner}>
-                                <div style={styles.content} ref={contentRef}>
+                            <div className="os-window-content-inner" style={styles.contentInner}>
+                                <div className="os-window-content" style={styles.content} ref={contentRef}>
                                     {props.children}
                                 </div>
                             </div>
@@ -471,9 +473,12 @@ const styles: StyleSheetCSS = {
         // zIndex: 10000,
 
         alignItems: 'center',
+        flexShrink: 0,
     },
     windowHeader: {
         flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
         // justifyContent: 'center',
         // alignItems: 'center',
     },

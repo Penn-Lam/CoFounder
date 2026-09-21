@@ -141,7 +141,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     </div>
                 </div>
             )}
-            <div style={styles.toolbarInner}>
+            <div className="os-taskbar-inner" style={styles.toolbarInner}>
                 <div style={styles.toolbar}>
                     <button
                         type="button"
@@ -169,7 +169,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                             <p className="toolbar-text ">Start</p>
                         </div>
                     </button>
-                    <div style={styles.toolbarTabsContainer}>
+                    <div className="os-taskbar-tabs" style={styles.toolbarTabsContainer}>
                         {Object.keys(windows).map((key) => {
                             return (
                                 <button
@@ -199,7 +199,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                                             icon={windows[key].icon}
                                             style={styles.tabIcon}
                                         />
-                                        <p style={styles.tabText}>
+                                        <p className="os-taskbar-tab-title" style={styles.tabText}>
                                             {windows[key].name}
                                         </p>
                                     </div>
@@ -208,7 +208,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                         })}
                     </div>
                 </div>
-                <div style={styles.time}>
+                <div className="os-taskbar-time" style={styles.time}>
                     <Icon style={styles.volumeIcon} icon="volumeOn" />
                     <p style={styles.timeText}>{time}</p>
                 </div>

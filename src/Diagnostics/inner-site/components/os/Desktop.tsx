@@ -30,7 +30,7 @@ const APPLICATIONS: {
 } = {
     diagnostics: {
         key: 'diagnostics',
-        name: 'Cofounder Diagnostics',
+        name: 'Cofounder 合伙人测试',
         shortcutIcon: 'showcaseIcon',
         component: CofounderDiagnostics,
     },
@@ -95,7 +95,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         });
 
         newShortcuts.forEach((shortcut) => {
-            if (shortcut.shortcutName === 'Cofounder Diagnostics') {
+            if (shortcut.shortcutName === 'Cofounder 合伙人测试') {
                 shortcut.onOpen();
             }
         });

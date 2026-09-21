@@ -1556,6 +1556,32 @@
 }
 
 @media (max-width: 640px) {
+    .os-window {
+        top: 8px !important;
+        left: 8px !important;
+        width: calc(100vw - 16px) !important;
+        height: calc(100vh - 48px) !important;
+        height: calc(100dvh - 48px) !important;
+        box-sizing: border-box;
+    }
+
+    .os-window-border-outer,
+    .os-window-border-inner,
+    .os-window-content-outer,
+    .os-window-content-inner,
+    .os-window-content {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .showcase-header {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .window-drag-hitbox,
     .window-resize-hitbox,
     .window-drag-indicator,
@@ -1684,5 +1710,24 @@
 
     .privacy-data button {
         width: 100%;
+    }
+}
+
+@media (max-width: 360px) {
+    .os-taskbar-inner {
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    .os-taskbar-tab-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .os-taskbar-time {
+        width: 68px !important;
     }
 }
