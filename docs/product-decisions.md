@@ -25,8 +25,8 @@ This document records the settled product decisions from the design interview. A
 - Authenticate by email OTP and retain a secure session on the device. The same Account can recover access on another device by verifying the email again.
 - Keep the internal Account identifier independent from the email address.
 - Present registration as a retro computer sign-in flow rather than a conventional SaaS form.
-- Collect all privacy-related acknowledgements at Account registration, not as Pair Test questions. Require one acknowledgement for the terms and privacy notice and a separate explicit consent for external automated classification and overseas processing; record each consent's version and timestamp.
-- Present age eligibility and privacy choices before email and OTP entry, but attach the timestamped consent record only after the email is verified and the Account is created.
+- Collect all privacy-related acknowledgements at Account registration, not as Pair Test questions. Present one agreement to the service terms and privacy notice; that notice includes age eligibility and de-identified overseas automated classification. Continue recording each underlying policy version and timestamp separately.
+- Present email entry and the single terms agreement together before OTP delivery, and disable OTP delivery until it is accepted. Attach the timestamped consent record only after the email is verified and the Account is created.
 - Ask for an Account-level display name during registration after email verification. Never derive it from the email address.
 - Accept display names from 1 through 32 Unicode characters after trimming, reject control characters, and escape them in every output context. Do not add a subjective profanity filter.
 - Do not repeat unchanged privacy consent inside the Pair Test. Require consent again only when a material policy or processing change introduces a new version.

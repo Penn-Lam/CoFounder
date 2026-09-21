@@ -17,7 +17,6 @@ export interface AccountLoginProps {
 
 type Stage =
     | 'loading'
-    | 'privacy'
     | 'email'
     | 'otp'
     | 'profile'
@@ -38,7 +37,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     TOO_MANY_REQUESTS: '尝试次数过多，请稍后再试。',
     DISPLAY_NAME_LENGTH: '显示名去除首尾空格后须为 1–32 个字符。',
     DISPLAY_NAME_CONTROL_CHARACTER: '显示名不能包含控制或隐藏格式字符。',
-    ACKNOWLEDGEMENTS_REQUIRED: '请确认全部三项后继续。',
+    ACKNOWLEDGEMENTS_REQUIRED: '请先阅读并同意服务条款与隐私说明。',
     ACTIVE_PAIR_LIMIT: '最多只能同时保留 3 个未完成的 Pair。请继续已有测试。',
     REVISION_CONFLICT: '另一台设备已经保存了更新版本。请重新载入后继续。',
     PAIR_TEST_SEALED: '这份 Pair Test 已提交，不能再修改。',
@@ -326,59 +325,49 @@ const emptyProfile: PairProfile = {
     companyAuthority: '',
 };
 
-type ConsentChecklistProps = {
-    ageEligible: boolean;
-    termsPrivacy: boolean;
-    overseasClassifier: boolean;
+type TermsAgreementProps = {
+    accepted: boolean;
     renewal?: boolean;
-    onAgeEligible(value: boolean): void;
-    onTermsPrivacy(value: boolean): void;
-    onOverseasClassifier(value: boolean): void;
+    onChange(value: boolean): void;
 };
 
-const ConsentChecklist: React.FC<ConsentChecklistProps> = ({
-    ageEligible,
-    termsPrivacy,
-    overseasClassifier,
+const TermsAgreement: React.FC<TermsAgreementProps> = ({
+    accepted,
     renewal = false,
-    onAgeEligible,
-    onTermsPrivacy,
-    onOverseasClassifier,
+    onChange,
 }) => (
-    <fieldset>
-        <legend>{renewal ? '隐私版本已更新' : '开始前确认'}</legend>
-        {renewal && (
-            <p>登录和数据权利操作仍可使用。继续创建 Pair 或答题前，请确认当前版本。</p>
-        )}
+    <div className="terms-agreement">
+        <details className="privacy-summary">
+            <summary>
+                {renewal ? '查看更新后的服务条款与隐私说明' : '查看服务条款与隐私说明'}
+            </summary>
+            <p>Cofounder 是娱乐产品，不是科学、心理、法律或投资评估。</p>
+            <ul>
+                <li>你确认自己已满 14 周岁。</li>
+                <li>账户邮箱仅用于登录和必要通知。</li>
+                <li>
+                    双方答案会形成共同报告；敏感主题不归因到个人，完成后会删除原始敏感选项。
+                </li>
+                <li>
+                    你同意去标识化 Pair 特征交由境外 TypeSafe AI
+                    分类；分类器不会收到姓名、邮箱或原始答案。
+                </li>
+                <li>你可以在 Privacy &amp; Data 中导出数据、退出 Pair 或删除账户。</li>
+            </ul>
+        </details>
         <label>
             <input
                 type="checkbox"
-                checked={ageEligible}
-                onChange={(event) => onAgeEligible(event.target.checked)}
-            />
-            <span>{renewal ? '我仍符合 14+ 参与条件。' : '我已满 14 周岁。'}</span>
-        </label>
-        <label>
-            <input
-                type="checkbox"
-                checked={termsPrivacy}
-                onChange={(event) => onTermsPrivacy(event.target.checked)}
-            />
-            <span>{renewal ? '我同意当前条款与隐私说明。' : '我已阅读并同意条款与隐私说明。'}</span>
-        </label>
-        <label>
-            <input
-                type="checkbox"
-                checked={overseasClassifier}
-                onChange={(event) => onOverseasClassifier(event.target.checked)}
+                checked={accepted}
+                onChange={(event) => onChange(event.target.checked)}
             />
             <span>
                 {renewal
-                    ? '我单独同意当前境外自动分类处理说明。'
-                    : '我单独同意去标识化特征交由境外自动分类服务处理。'}
+                    ? '我已阅读并同意更新后的服务条款与隐私说明。'
+                    : '我已阅读并同意服务条款与隐私说明。'}
             </span>
         </label>
-    </fieldset>
+    </div>
 );
 
 export const AccountLogin: React.FC<AccountLoginProps> = ({
@@ -386,9 +375,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
     onPrivacyData,
 }) => {
     const [stage, setStage] = useState<Stage>('loading');
-    const [ageEligible, setAgeEligible] = useState(false);
-    const [termsPrivacy, setTermsPrivacy] = useState(false);
-    const [overseasClassifier, setOverseasClassifier] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [displayName, setDisplayName] = useState('');
@@ -396,30 +383,28 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
     const [busy, setBusy] = useState(false);
     const [resendSeconds, setResendSeconds] = useState(0);
     const [otpExpiresSeconds, setOtpExpiresSeconds] = useState(0);
-    const [verifiedAccount, setVerifiedAccount] = useState(false);
     const [otpChallenge, setOtpChallenge] = useState<TurnstileChallenge | null>(null);
     const [otpTurnstileToken, setOtpTurnstileToken] = useState('');
-    const loadAccount = async (continueVerifiedRegistration = false) => {
+    const loadAccount = async () => {
         const account = await request<AccountResponse>('/api/account');
         if (!account.signedIn) {
-            setStage('privacy');
+            setStage('email');
             return;
         }
 
-        setVerifiedAccount(true);
         if (account.consentState === 'current') {
             onComplete();
         } else if (account.consentState === 'renewal_required') {
             setStage('renewal');
         } else {
-            setStage(continueVerifiedRegistration ? 'profile' : 'privacy');
+            setStage('profile');
         }
     };
 
     useEffect(() => {
         loadAccount().catch(() => {
             setError('账户服务暂时不可用，请刷新后重试。');
-            setStage('privacy');
+            setStage('email');
         });
     }, []);
 
@@ -456,6 +441,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
     const sendOtp = (event: FormEvent) => {
         event.preventDefault();
         run(async () => {
+            if (!termsAccepted) throw new Error(ERROR_MESSAGES.ACKNOWLEDGEMENTS_REQUIRED);
             try {
                 await request('/api/auth/email-otp/send-verification-otp', {
                     email: email.trim(),
@@ -490,7 +476,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                 otp: otp.trim(),
                 name: 'Cofounder Account',
             });
-            await loadAccount(true);
+            await loadAccount();
         });
     };
 
@@ -502,9 +488,9 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                 consentState: 'current';
             }>('/api/account/registration', {
                 displayName,
-                ageEligible,
-                termsPrivacy,
-                overseasClassifier,
+                ageEligible: termsAccepted,
+                termsPrivacy: termsAccepted,
+                overseasClassifier: termsAccepted,
             });
             setDisplayName(result.displayName);
             onComplete();
@@ -515,15 +501,13 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
         event.preventDefault();
         run(async () => {
             await request('/api/account/consent', {
-                ageEligible,
-                termsPrivacy,
-                overseasClassifier,
+                ageEligible: termsAccepted,
+                termsPrivacy: termsAccepted,
+                overseasClassifier: termsAccepted,
             });
             await loadAccount();
         });
     };
-
-    const allAcknowledged = ageEligible && termsPrivacy && overseasClassifier;
 
     return (
         <main className="account-login-screen">
@@ -542,41 +526,6 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
 
                     {stage === 'loading' && <p role="status">正在检查账户状态……</p>}
 
-                        {stage === 'privacy' && (
-                            <form
-                                className="account-form"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    setError('');
-                                    setStage(verifiedAccount ? 'profile' : 'email');
-                                }}
-                            >
-                                <ConsentChecklist
-                                    ageEligible={ageEligible}
-                                    termsPrivacy={termsPrivacy}
-                                    overseasClassifier={overseasClassifier}
-                                    onAgeEligible={setAgeEligible}
-                                    onTermsPrivacy={setTermsPrivacy}
-                                    onOverseasClassifier={setOverseasClassifier}
-                                />
-                                <details className="privacy-summary">
-                                    <summary>查看简明条款与隐私说明</summary>
-                                    <p>
-                                        Cofounder 是娱乐产品，不是科学、心理、法律或投资评估。账户邮箱仅用于登录和必要通知。
-                                        双方答案会形成共同报告；敏感主题不归因到个人，完成后会删除原始敏感选项。
-                                        去标识化 Pair 特征可交由境外 TypeSafe AI 分类，分类器不接收姓名、邮箱或原始答案。
-                                        你可以在 Privacy &amp; Data 中导出数据、退出 Pair 或删除账户。
-                                    </p>
-                                </details>
-                                <p className="account-note">
-                                    双方答案会合并为共同解读；敏感主题只报告“存在差异”，不会归因到个人。
-                                </p>
-                                <button type="submit" disabled={!allAcknowledged}>
-                                    下一步：验证邮箱
-                                </button>
-                            </form>
-                        )}
-
                         {stage === 'email' && (
                             <form className="account-form" onSubmit={sendOtp}>
                                 <label className="field-label" htmlFor="account-email">
@@ -593,6 +542,10 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                 <p className="account-note">
                                     我们会发送一个 10 分钟有效的 6 位验证码。
                                 </p>
+                                <TermsAgreement
+                                    accepted={termsAccepted}
+                                    onChange={setTermsAccepted}
+                                />
                                 {otpChallenge && (
                                     <TurnstilePrompt
                                         challenge={otpChallenge}
@@ -601,13 +554,12 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                     />
                                 )}
                                 <div className="form-actions">
-                                    <button type="button" onClick={() => setStage('privacy')}>
-                                        返回
-                                    </button>
                                     <button
                                         type="submit"
                                         disabled={
-                                            busy || Boolean(otpChallenge && !otpTurnstileToken)
+                                            busy ||
+                                            !termsAccepted ||
+                                            Boolean(otpChallenge && !otpTurnstileToken)
                                         }
                                     >
                                         发送验证码
@@ -693,22 +645,29 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                 <p className="account-note">
                                     1–32 个字符。可使用真名、昵称或角色名；不会从邮箱自动生成。
                                 </p>
-                                <button type="submit" disabled={busy}>创建 Account</button>
+                                {!termsAccepted && (
+                                    <TermsAgreement
+                                        accepted={termsAccepted}
+                                        onChange={setTermsAccepted}
+                                    />
+                                )}
+                                <button type="submit" disabled={busy || !termsAccepted}>
+                                    创建 Account
+                                </button>
                             </form>
                         )}
 
                         {stage === 'renewal' && (
                             <form className="account-form" onSubmit={renewConsent}>
-                                <ConsentChecklist
+                                <p className="account-note">
+                                    登录和数据权利操作仍可使用。继续创建 Pair 或答题前，请确认当前版本。
+                                </p>
+                                <TermsAgreement
                                     renewal
-                                    ageEligible={ageEligible}
-                                    termsPrivacy={termsPrivacy}
-                                    overseasClassifier={overseasClassifier}
-                                    onAgeEligible={setAgeEligible}
-                                    onTermsPrivacy={setTermsPrivacy}
-                                    onOverseasClassifier={setOverseasClassifier}
+                                    accepted={termsAccepted}
+                                    onChange={setTermsAccepted}
                                 />
-                                <button type="submit" disabled={busy || !allAcknowledged}>
+                                <button type="submit" disabled={busy || !termsAccepted}>
                                     确认并继续
                                 </button>
                                 {onPrivacyData && (

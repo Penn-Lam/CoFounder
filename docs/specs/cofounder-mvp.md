@@ -29,8 +29,8 @@ Preserve the garage-style 3D homepage for desktop discovery, provide direct acce
 7. As a visitor following an Invitation Link, authentication return, or result link, I want to enter the relevant Diagnostics state directly, so that I do not have to traverse the garage first.
 8. As a prospective Participant, I want to see the entertainment-product disclaimer before beginning, so that I do not mistake the result for scientific or professional advice.
 9. As a prospective Participant, I want to confirm that I am at least 14 without providing a birth date, so that eligibility requires minimal personal data.
-10. As a prospective Participant, I want privacy choices presented before email entry, so that I understand the processing before creating an Account.
-11. As a prospective Participant, I want overseas processing and external automated classification to have a separate explicit consent, so that the material privacy choice is clear.
+10. As a prospective Participant, I want the privacy agreement presented alongside email entry, so that I understand the processing before requesting a verification code.
+11. As a prospective Participant, I want one concise terms agreement with the material privacy choices available inside it, so that registration is approachable without hiding how data is processed.
 12. As a prospective Participant, I want to authenticate with an email OTP rather than a password, so that Account recovery is simple.
 13. As a Participant, I want an OTP error to explain whether I can resend or change my email, so that authentication failure is recoverable.
 14. As a Participant, I want a 30-day rotating session, so that routine return visits do not require repeated OTP entry.
@@ -135,9 +135,9 @@ Preserve the garage-style 3D homepage for desktop discovery, provide direct acce
 - Deploy one same-origin Cloudflare Worker using Hono. Use D1 for Account and Pair data, R2 for oversized media and generated assets, Queue for report generation and transactional work, and Cron for retention cleanup.
 - Replace the production Express runtime. Move static assets that exceed Cloudflare's static-asset limit into R2.
 - Use Better Auth with email OTP delivered by Resend. OTPs last ten minutes, permit at most five attempts, have a 60-second resend delay, and are rate-limited by email and IP. Sessions rotate over 30 days.
-- Present eligibility and versioned privacy choices before email entry, but attach consent timestamps only after email verification creates the Account.
+- Present email entry and one versioned terms agreement together, and require acceptance before sending an OTP. Include age eligibility and de-identified overseas classification in the expandable terms; attach consent timestamps only after email verification creates the Account.
 - Keep internal Account identity separate from email. Store one Account-level display name, constrained to 1–32 trimmed Unicode characters with control-character rejection and contextual output escaping.
-- Require separate versioned consent for external automated classification and overseas processing. A material version change blocks new Pair activity but never blocks sign-in, export, withdrawal, or deletion.
+- Record the bundled agreement's underlying privacy and overseas-classification versions separately. A material version change blocks new Pair activity but never blocks sign-in, export, withdrawal, or deletion.
 - Permit any authenticated, currently consenting Account to create a Pair. Do not implement a Beta Invitation Code.
 - Limit each Account to three active incomplete Pairs.
 - Model Pair ownership as two equal Participant positions after claim. The creator has special invitation controls only before the second place is claimed.

@@ -826,6 +826,21 @@
     margin-top: 8px;
 }
 
+.privacy-summary ul {
+    margin: 8px 0 0;
+    padding-left: 22px;
+}
+
+.privacy-summary li + li {
+    margin-top: 5px;
+}
+
+.terms-agreement {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .form-actions {
     align-items: center;
     flex-wrap: wrap;
