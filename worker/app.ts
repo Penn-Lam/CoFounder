@@ -1233,15 +1233,17 @@ export const createApp = (services: AppServices = defaultServices) => {
         );
     });
 
-    for (const path of ['/invite/*', '/auth/*']) {
-        app.get(path, (context) =>
-            fetchShell(
-                context.env.ASSETS,
-                '/desktop/index.html',
-                context.env.WEB_ANALYTICS_TOKEN,
-            ),
-        );
-    }
+    app.get('/invite/*', (context) =>
+        fetchShell(context.env.ASSETS, '/index.html', context.env.WEB_ANALYTICS_TOKEN),
+    );
+
+    app.get('/auth/*', (context) =>
+        fetchShell(
+            context.env.ASSETS,
+            '/desktop/index.html',
+            context.env.WEB_ANALYTICS_TOKEN,
+        ),
+    );
 
     app.get('/media/*', async (context) => {
         const key = context.req.path.slice('/media/'.length);

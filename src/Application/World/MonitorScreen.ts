@@ -198,7 +198,10 @@ export default class MonitorScreen extends EventEmitter {
         };
 
         // Set iframe attributes
-        iframe.src = new URL('/desktop/', window.location.origin).toString();
+        const desktopUrl = new URL('/desktop/', window.location.origin);
+        const invitation = window.location.pathname.match(/^\/invite\/([^/]+)$/);
+        if (invitation) desktopUrl.searchParams.set('invite', invitation[1]);
+        iframe.src = desktopUrl.toString();
         iframe.style.width = this.screenSize.width + 'px';
         iframe.style.height = this.screenSize.height + 'px';
         iframe.style.padding = IFRAME_PADDING + 'px';

@@ -1523,7 +1523,10 @@ const PairTestFlow: React.FC<{
 const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
     const compact = window.innerWidth < 640;
     const contentReviewPath = window.location.pathname === '/desktop/content-review';
-    const invitationToken = window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1] || '';
+    const invitationToken =
+        window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1] ||
+        new URLSearchParams(window.location.search).get('invite') ||
+        '';
     const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
     const [activePairs, setActivePairs] = useState<PairState[]>([]);
     const [currentPair, setCurrentPair] = useState<PairState | null>(null);

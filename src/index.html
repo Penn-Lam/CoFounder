@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="/" />
   <script>
     (function () {
       var params = new URLSearchParams(window.location.search);
@@ -12,7 +13,11 @@
       var coarsePointer = window.matchMedia('(pointer: coarse)').matches;
 
       if (!requests3D && (smallViewport || coarsePointer)) {
-        window.location.replace('/desktop/?entry=mobile');
+        var destination = new URL('/desktop/', window.location.origin);
+        var invitation = window.location.pathname.match(/^\/invite\/([^/]+)$/);
+        destination.searchParams.set('entry', 'mobile');
+        if (invitation) destination.searchParams.set('invite', invitation[1]);
+        window.location.replace(destination.toString());
       }
     })();
   </script>

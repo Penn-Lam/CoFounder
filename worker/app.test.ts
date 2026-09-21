@@ -111,21 +111,29 @@ describe('Cofounder application shell', () => {
         expect(await response.text()).toBe('console.log("desktop")');
     });
 
-    it.each(['/invite/pair-token', '/auth/callback'])(
-        'bypasses the garage for %s',
-        async (path) => {
-            const response = await app.request(
-                path,
-                undefined,
-                createBindings(),
-            );
+    it('serves the garage for desktop invitation entry', async () => {
+        const response = await app.request(
+            '/invite/pair-token',
+            undefined,
+            createBindings(),
+        );
 
-            expect(response.status).toBe(200);
-            expect(await response.text()).toContain(
-                '<title>Cofounder Diagnostics</title>',
-            );
-        },
-    );
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain('<title>Garage</title>');
+    });
+
+    it('bypasses the garage for authentication callbacks', async () => {
+        const response = await app.request(
+            '/auth/callback',
+            undefined,
+            createBindings(),
+        );
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain(
+            '<title>Cofounder Diagnostics</title>',
+        );
+    });
 
     it('serves unavailable public result metadata without indexing', async () => {
         const response = await app.request(
