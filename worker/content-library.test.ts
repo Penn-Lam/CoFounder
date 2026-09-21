@@ -4,7 +4,7 @@ import { contentLibraryV1, validateContentLibrary } from './content-library';
 const copyLibrary = () =>
     structuredClone(contentLibraryV1) as unknown as typeof contentLibraryV1;
 
-describe('Content Library v1 validation', () => {
+describe('Content Library validation', () => {
     it('accepts the complete approved library', () => {
         const result = validateContentLibrary(contentLibraryV1);
 
@@ -12,6 +12,7 @@ describe('Content Library v1 validation', () => {
         expect(contentLibraryV1.prompts.length).toBeGreaterThanOrEqual(40);
         expect(contentLibraryV1.publicArchetypes).toHaveLength(8);
         expect(contentLibraryV1.privateRiskPatterns).toHaveLength(5);
+        expect(contentLibraryV1.mirrorMisreads).toHaveLength(4);
     });
 
     it('rejects duplicate IDs, unapproved and placeholder copy', () => {

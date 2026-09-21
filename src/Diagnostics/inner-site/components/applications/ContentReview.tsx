@@ -16,6 +16,7 @@ type ReviewLibrary = {
         copy: string;
         action: string;
     }>;
+    mirrorMisreads: Array<{ id: string; title: string; copy: string }>;
     dimensionBands: Record<string, Array<[string, string]>>;
     reportModules: Array<{ id: string; title: string; copy: string }>;
     prompts: Array<{ id: string; topic: string; copy: string }>;
@@ -58,7 +59,7 @@ const ContentReview: React.FC = () => {
     return (
         <article className="content-review">
             <header>
-                <h1>Content Library v1</h1>
+                <h1>Content Library</h1>
                 <p>{library.version} · HUMAN FINAL · APPROVED</p>
             </header>
             <section>
@@ -114,6 +115,18 @@ const ContentReview: React.FC = () => {
                         </div>
                     ),
                 )}
+            </section>
+            <section>
+                <h2>Mirror Interpretations</h2>
+                <div className="review-grid">
+                    {library.mirrorMisreads.map((item) => (
+                        <article className="review-card" key={item.id}>
+                            <code>{item.id}</code>
+                            <h3>{item.title}</h3>
+                            <p>{item.copy}</p>
+                        </article>
+                    ))}
+                </div>
             </section>
             <section>
                 <h2>Conservative Report</h2>

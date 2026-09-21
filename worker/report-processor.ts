@@ -1,7 +1,9 @@
 import { contentLibraryV1 } from './content-library';
 import {
     createJevClassifier,
+    type ChoiceCandidateSet,
     type ClassificationDecision,
+    type ClassificationRequest,
     type PairClassifier,
     TransientClassificationError,
 } from './jev-classifier';
@@ -11,7 +13,12 @@ import {
     type ReportRepository,
     type StoredPairResult,
 } from './report-repository';
-import { DIMENSIONS, derivePairRules, type RulesParticipant } from './rules';
+import {
+    DIMENSIONS,
+    derivePairRules,
+    type Dimension,
+    type RulesParticipant,
+} from './rules';
 
 const toRulesParticipant = (state: PairTestState): RulesParticipant => {
     if (!state.profile) throw new Error('Sealed participant has no profile');
@@ -29,14 +36,241 @@ const toRulesParticipant = (state: PairTestState): RulesParticipant => {
     };
 };
 
-const severityRank = (severity: string | null) =>
-    severity === 'critical'
-        ? 3
-        : severity === 'high'
-          ? 2
-          : severity === 'moderate'
-            ? 1
-            : 0;
+type PairRules = ReturnType<typeof derivePairRules>;
+
+const archetypeCriteria: Record<string, string> = {
+    'archetype.vision-reality':
+        'Different but useful vision and execution orientations.',
+    'archetype.dual-big-outcome':
+        'Both participants consistently favor large, long-term outcomes.',
+    'archetype.dual-product':
+        'Both participants have product in participant_role_codes and share a strong product or user-evidence orientation.',
+    'archetype.cashflow-operators':
+        'The Pair role codes and money pattern emphasize sales, finance, customer delivery, revenue, and sustainable operation.',
+    'archetype.research-lab':
+        'Research appears in participant_role_codes and the Pair has a meaningful technical exploration pattern.',
+    'archetype.narrative-market-fit':
+        'Role and narrative codes combine fundraising, marketing, BD, or public storytelling with operating evidence.',
+    'archetype.complementary-monsters':
+        'Participant role codes show unusually strong functional complement without multiple severe structural conflicts.',
+    'archetype.complementary-builders':
+        'Use when roles are broadly complementary but no specialized identity is clearly more defining.',
+};
+
+const riskPatternCriteria: Record<string, string> = {
+    'risk.dual-leadership':
+        'Both participants may expect final authority, creating competing command systems.',
+    'risk.quiet-reactive':
+        'Different conflict timing can turn silence into pressure and pressure into withdrawal.',
+    'risk.high-pressure-pair':
+        'The Pair may normalize urgency, overwork, and sustained operating pressure.',
+    'risk.world-peace':
+        'High apparent harmony may conceal disagreements that are not being surfaced.',
+    'risk.parallel-solo-founders':
+        'Both can execute independently, but shared context and joint decisions may be weak.',
+};
+
+const mirrorCriteria: Record<string, string> = {
+    'mirror.accurate-model':
+        'Both participants predict each other accurately with few opposite answers.',
+    'mirror.near-but-fragile':
+        'Most predictions are directionally near, but important boundaries remain unclear.',
+    'mirror.opposite-assumptions':
+        'Opposite predictions are the dominant or most consequential pattern.',
+    'mirror.asymmetric-model':
+        'One participant predicts the other substantially better than the reverse.',
+};
+
+const dimensionPromptTopics: Record<Dimension, string[]> = {
+    ambition: ['five-year-definition'],
+    risk: ['hiring-window', 'platform-overlap', 'risk-loss-aversion'],
+    money: [
+        'customer-customization',
+        'founder-compensation',
+        'cash-at-six-months',
+        'runway-signal',
+    ],
+    product: ['user-demand', 'media-vs-usage', 'product-evidence'],
+    governance: [
+        'decision-deadlock',
+        'company-authority',
+        'authority-model',
+        'repeated-bad-decisions',
+    ],
+    conflict: ['conflict-latency', 'conflict-style', 'unresolved-conflict'],
+    operating: ['work-boundary', 'engineering-rigor', 'delayed-decision'],
+    external: ['public-representation', 'customer-crisis'],
+};
+
+const flagPromptTopics: Record<string, string[]> = {
+    'dual-sole-authority': ['company-authority', 'authority-model'],
+    'safe-ambition-gap': ['five-year-definition'],
+    'risk-gap': ['risk-loss-aversion', 'hiring-window'],
+    'money-gap': ['cash-at-six-months', 'runway-signal'],
+    'product-large-structural-difference': ['product-evidence', 'user-demand'],
+    'conflict-latency-gap': ['conflict-latency', 'conflict-style'],
+    'operating-gap': ['work-boundary', 'engineering-rigor'],
+};
+
+const mirrorPromptTopics: Record<string, string[]> = {
+    Q4: ['hiring-window'],
+    Q7: ['customer-customization'],
+    Q13: ['decision-deadlock'],
+    Q16: ['conflict-latency'],
+    Q22: ['public-representation'],
+};
+
+const unresolvedPromptTopics: Record<string, string[]> = {
+    'acquisition-intent': ['acquisition-threshold'],
+    'equity-adjustment': ['equity-adjustment'],
+    'commitment-horizon': ['commitment-horizon'],
+    'ethics-boundary': ['ethics-boundary'],
+    'ceo-removal': ['ceo-removal'],
+};
+
+const choiceSet = (
+    ids: string[],
+    criterion: (id: string) => string,
+    fallback: string,
+): ChoiceCandidateSet => ({
+    criteria: Object.fromEntries(ids.map((id) => [id, criterion(id)])),
+    fallback,
+});
+
+export const buildClassificationRequest = (
+    rules: PairRules,
+): ClassificationRequest => {
+    const matches = rules.pairFeatureVector.dimension_match_scores;
+    const gaps = rules.pairFeatureVector.dimension_gaps;
+    const dimensionsByHighestMatch = [
+        ...rules.classificationSignals.dimensionsByLowestMatch,
+    ].reverse();
+    const alignmentCandidates = dimensionsByHighestMatch.slice(0, 3);
+    const complementCandidates = (['operating', 'external'] as Dimension[]).sort(
+        (left, right) => matches[right] - matches[left],
+    );
+    const sortedFlags = rules.classificationSignals.conflictFlagIdsByPriority.map(
+        (id) => rules.conflictFlags.find((flag) => flag.id === id)!,
+    );
+    const lowestDimensions =
+        rules.classificationSignals.dimensionsByLowestMatch.slice(0, 3);
+    const topRiskCandidates = [
+        ...sortedFlags.map(({ id }) => `flag.${id}`),
+        ...lowestDimensions.map((dimension) => `dimension.${dimension}`),
+    ].slice(0, 5);
+    const topRiskFallback = topRiskCandidates[0];
+    const mirrorA = rules.pairFeatureVector.mirror_counts.participant_a_predicts_b;
+    const mirrorB = rules.pairFeatureVector.mirror_counts.participant_b_predicts_a;
+    const exactGap = Math.abs(mirrorA.exact - mirrorB.exact);
+    const oppositeTotal = mirrorA.opposite + mirrorB.opposite;
+    const nearTotal = mirrorA.near + mirrorB.near;
+    const mirrorFallback =
+        exactGap >= 2
+            ? 'mirror.asymmetric-model'
+            : oppositeTotal >= 3
+              ? 'mirror.opposite-assumptions'
+              : nearTotal >= 4
+                ? 'mirror.near-but-fragile'
+                : 'mirror.accurate-model';
+    const riskFallback = sortedFlags.some(
+        ({ id }) => id === 'dual-sole-authority',
+    )
+        ? 'risk.dual-leadership'
+        : matches.conflict < 70
+          ? 'risk.quiet-reactive'
+          : 'risk.parallel-solo-founders';
+    const promptTopics = [
+        dimensionPromptTopics[lowestDimensions[0]],
+        flagPromptTopics[rules.classificationSignals.conflictFlagIdsByPriority[0]],
+        mirrorPromptTopics[rules.classificationSignals.mirrorQuestionIdsByMisread[0]],
+        ['external-role'],
+        unresolvedPromptTopics[
+            rules.classificationSignals.unresolvedTopicsByPriority[0]
+        ],
+    ];
+    const usedPromptIds = new Set<string>();
+    let fallbackDimensionIndex = 1;
+    const promptChoices = promptTopics.map((requestedTopics) => {
+        let topics = requestedTopics;
+        let prompts = topics
+            ? contentLibraryV1.prompts.filter(
+                  ({ id, topic }) =>
+                      topics.includes(topic) && !usedPromptIds.has(id),
+              )
+            : [];
+        while (prompts.length === 0) {
+            const fallbackDimension =
+                rules.classificationSignals.dimensionsByLowestMatch[
+                    fallbackDimensionIndex
+                ];
+            fallbackDimensionIndex += 1;
+            topics = dimensionPromptTopics[fallbackDimension];
+            prompts = contentLibraryV1.prompts.filter(
+                ({ id, topic }) =>
+                    topics.includes(topic) && !usedPromptIds.has(id),
+            );
+        }
+        prompts.forEach(({ id }) => usedPromptIds.add(id));
+        return choiceSet(
+            prompts.map(({ id }) => id),
+            (id) => {
+                const prompt = prompts.find((item) => item.id === id)!;
+                return `${prompt.topic}: ${prompt.copy}`;
+            },
+            prompts[0].id,
+        );
+    }) as ClassificationRequest['choices']['conversationPrompts'];
+
+    return {
+        featureVector: rules.pairFeatureVector,
+        choices: {
+            publicArchetype: choiceSet(
+                rules.publicFeatures.publicArchetypeCandidates.map(
+                    (id) => `archetype.${id}`,
+                ),
+                (id) => archetypeCriteria[id],
+                `archetype.${rules.conservativeResult.publicArchetypeId}`,
+            ),
+            strongestAlignment: choiceSet(
+                alignmentCandidates,
+                (dimension) =>
+                    `${dimension}: match ${matches[dimension]}, gap ${gaps[dimension]}.`,
+                alignmentCandidates[0],
+            ),
+            valuableComplement: choiceSet(
+                complementCandidates,
+                (dimension) =>
+                    `${dimension}: complement match ${matches[dimension]}, gap ${gaps[dimension]}.`,
+                complementCandidates[0],
+            ),
+            topRisk: choiceSet(
+                topRiskCandidates,
+                (id) => {
+                    if (id.startsWith('flag.')) {
+                        const flag = sortedFlags.find(
+                            (item) => `flag.${item.id}` === id,
+                        )!;
+                        return `Rule-derived ${flag.severity} conflict flag in ${flag.dimension}: ${flag.id}.`;
+                    }
+                    const dimension = id.slice('dimension.'.length);
+                    return `${dimension}: match ${matches[dimension]}, gap ${gaps[dimension]}.`;
+                },
+                topRiskFallback,
+            ),
+            mirrorMisread: choiceSet(
+                Object.keys(mirrorCriteria),
+                (id) => mirrorCriteria[id],
+                mirrorFallback,
+            ),
+            privateRiskPattern: choiceSet(
+                Object.keys(riskPatternCriteria),
+                (id) => riskPatternCriteria[id],
+                riskFallback,
+            ),
+            conversationPrompts: promptChoices,
+        },
+    };
+};
 
 export const processPairReport = async (
     repository: ReportRepository,
@@ -56,15 +290,7 @@ export const processPairReport = async (
         toRulesParticipant(input.creator.state),
         toRulesParticipant(input.partner.state),
     );
-    const classificationInput = {
-        featureVector: rules.pairFeatureVector,
-        publicArchetypeCandidates:
-            rules.publicFeatures.publicArchetypeCandidates,
-        forbiddenPublicArchetypes:
-            rules.publicFeatures.forbiddenPublicArchetypes,
-        conservativePublicArchetypeId:
-            rules.conservativeResult.publicArchetypeId,
-    };
+    const classificationInput = buildClassificationRequest(rules);
     let classification: ClassificationDecision;
     try {
         classification = await (
@@ -118,15 +344,14 @@ export const processPairReport = async (
         relationLabel:
             vocabulary.relations[rules.dimensions[dimension].relation],
     }));
-    const alignment = [...dimensions].sort((a, b) => b.match - a.match)[0];
-    const complement = [...dimensions]
-        .filter(
-            ({ dimension }) =>
-                dimension === 'operating' || dimension === 'external',
-        )
-        .sort((a, b) => b.match - a.match)[0];
-    const flags = [...rules.conflictFlags]
-        .sort((a, b) => severityRank(b.severity) - severityRank(a.severity))
+    const alignment = dimensions.find(
+        ({ dimension }) => dimension === classification.alignmentDimension,
+    )!;
+    const complement = dimensions.find(
+        ({ dimension }) => dimension === classification.complementDimension,
+    )!;
+    const flags = rules.classificationSignals.conflictFlagIdsByPriority
+        .map((id) => rules.conflictFlags.find((flag) => flag.id === id)!)
         .map((flag) => ({
             ...flag,
             ...vocabulary.flags[flag.id as keyof typeof vocabulary.flags],
@@ -144,47 +369,45 @@ export const processPairReport = async (
             ? vocabulary.severities[signal.severity]
             : null,
     }));
-    const unresolved = sensitiveSignals.find(
-        ({ state }) => state === 'unresolved',
-    );
-    const topDifference = [...dimensions].sort((a, b) => a.match - b.match)[0];
     const topDifferenceModule = contentLibraryV1.reportModules.find(
         ({ id }) => id === 'report.top-difference',
     )!;
-    const topRisk = flags[0]
+    const selectedFlag = classification.topRiskId.startsWith('flag.')
+        ? flags.find(
+              ({ id }) => `flag.${id}` === classification.topRiskId,
+          )!
+        : null;
+    const selectedRiskDimension = classification.topRiskId.startsWith(
+        'dimension.',
+    )
+        ? dimensions.find(
+              ({ dimension }) =>
+                  `dimension.${dimension}` === classification.topRiskId,
+          )!
+        : null;
+    const topRisk = selectedFlag
         ? {
               kind: 'flag' as const,
-              id: flags[0].id,
-              severity: flags[0].severity,
-              title: flags[0].title,
-              copy: flags[0].copy,
+              id: selectedFlag.id,
+              severity: selectedFlag.severity,
+              title: selectedFlag.title,
+              copy: selectedFlag.copy,
           }
-        : unresolved
-          ? {
-                kind: 'unresolved' as const,
-                id: unresolved.topic,
-                severity: null,
-                title: unresolved.topicLabel,
-                copy: unresolved.stateLabel,
-            }
-          : {
-                kind: 'difference' as const,
-                id: topDifference.dimension,
-                severity: null,
-                title: topDifference.label,
-                copy: topDifferenceModule.copy,
-            };
-    const archetypeKey = classification.publicArchetypeId;
+        : {
+              kind: 'difference' as const,
+              id: selectedRiskDimension!.dimension,
+              severity: null,
+              title: selectedRiskDimension!.label,
+              copy: topDifferenceModule.copy,
+          };
     const archetype = contentLibraryV1.publicArchetypes.find(
-        ({ key }) => key === archetypeKey,
+        ({ id }) => id === classification.publicArchetypeId,
     )!;
-    const riskKey = flags.some(({ id }) => id === 'dual-sole-authority')
-        ? 'dual-leadership'
-        : rules.dimensions.conflict.match < 70
-          ? 'quiet-reactive'
-          : 'parallel-solo-founders';
     const risk = contentLibraryV1.privateRiskPatterns.find(
-        ({ key }) => key === riskKey,
+        ({ id }) => id === classification.privateRiskPatternId,
+    )!;
+    const mirrorInterpretation = contentLibraryV1.mirrorMisreads.find(
+        ({ id }) => id === classification.mirrorMisreadId,
     )!;
     const moduleFor = (id: string) =>
         contentLibraryV1.reportModules.find((item) => item.id === id)!;
@@ -194,7 +417,7 @@ export const processPairReport = async (
         const module = moduleFor(id);
         return { title: module.title, copy: module.copy };
     };
-    const prompts = contentLibraryV1.conservativeResult.promptIds.map((id) => {
+    const prompts = classification.promptIds.map((id) => {
         const prompt = contentLibraryV1.prompts.find((item) => item.id === id)!;
         return { id: prompt.id, copy: prompt.copy };
     });
@@ -251,6 +474,11 @@ export const processPairReport = async (
         },
         dimensions,
         mirror: {
+            interpretation: {
+                id: mirrorInterpretation.id,
+                title: mirrorInterpretation.title,
+                copy: mirrorInterpretation.copy,
+            },
             aPredictsB: {
                 exact: rules.mirror.aPredictsB.exact,
                 near: rules.mirror.aPredictsB.near,

@@ -1,8 +1,8 @@
 import questionBankJson from '../docs/calibration/question-bank-v0.json';
 import type { PairProfile } from './questionnaire';
 
-export const RULES_VERSION = 'cofounder-rules-v1';
-export const PAIR_FEATURE_VECTOR_VERSION = 'pair-feature-vector-v1';
+export const RULES_VERSION = 'cofounder-rules-v2';
+export const PAIR_FEATURE_VECTOR_VERSION = 'pair-feature-vector-v2';
 
 export const DIMENSIONS = [
     'ambition',
@@ -32,6 +32,13 @@ export type ConflictFlag = {
     id: string;
     severity: Severity;
     dimension: Dimension;
+};
+
+export type ClassificationSignals = {
+    dimensionsByLowestMatch: Dimension[];
+    conflictFlagIdsByPriority: string[];
+    mirrorQuestionIdsByMisread: string[];
+    unresolvedTopicsByPriority: string[];
 };
 
 export type SensitiveSignal = {
@@ -617,6 +624,9 @@ export const ordinaryConflictFlags = (input: {
     return flags;
 };
 
+const severityRank = (severity: Severity) =>
+    severity === 'critical' ? 3 : severity === 'high' ? 2 : 1;
+
 const publicCandidates = (
     participantA: RulesParticipant,
     participantB: RulesParticipant,
@@ -633,6 +643,8 @@ const publicCandidates = (
         candidates.push('dual-big-outcome');
     }
     if (
+        participantA.profile.responsibilities.includes('product') &&
+        participantB.profile.responsibilities.includes('product') &&
         (safeValuesA.product + safeValuesB.product) / 2 >= 50 &&
         Math.abs(safeValuesA.product - safeValuesB.product) <= 25
     ) {
@@ -837,6 +849,40 @@ export const derivePairRules = (
             ...collectTags(participantB.core),
         ]),
     ];
+    const relationRank: Record<MirrorRelation, number> = {
+        exact: 0,
+        near: 1,
+        opposite: 2,
+    };
+    const publicMirrorQuestionIds = questionBank.mirror_question_ids.filter(
+        (questionId) => questionId !== 'Q1',
+    );
+    const classificationSignals: ClassificationSignals = {
+        dimensionsByLowestMatch: [...DIMENSIONS].sort(
+            (left, right) => publicMatches[left].match - publicMatches[right].match,
+        ),
+        conflictFlagIdsByPriority: [...flags]
+            .sort(
+                (left, right) =>
+                    severityRank(right.severity) - severityRank(left.severity),
+            )
+            .map(({ id }) => id),
+        mirrorQuestionIdsByMisread: publicMirrorQuestionIds.sort((left, right) => {
+            const score = (questionId: string) =>
+                relationRank[
+                    mirrorA.outcomes.find((item) => item.questionId === questionId)!
+                        .relation
+                ] +
+                relationRank[
+                    mirrorB.outcomes.find((item) => item.questionId === questionId)!
+                        .relation
+                ];
+            return score(right) - score(left);
+        }),
+        unresolvedTopicsByPriority: sensitiveSignals
+            .filter(({ state }) => state === 'unresolved')
+            .map(({ topic }) => topic),
+    };
 
     return {
         questionSetVersion: questionBank.question_set_version,
@@ -875,8 +921,13 @@ export const derivePairRules = (
         unresolvedTopics: sensitiveSignals
             .filter(({ state }) => state === 'unresolved')
             .map(({ topic }) => topic),
+        classificationSignals,
         pairFeatureVector: {
             schema_version: PAIR_FEATURE_VECTOR_VERSION,
+            participant_role_codes: {
+                participant_a: [...participantA.profile.responsibilities].sort(),
+                participant_b: [...participantB.profile.responsibilities].sort(),
+            },
             participant_dimension_bands: {
                 participant_a: safeBandsA,
                 participant_b: safeBandsB,

@@ -6,13 +6,19 @@ import {
     JEV_DECISION_SCHEMA_VERSION,
     JEV_MODEL,
     OPENROUTER_JEV_MODEL,
+    type ChoiceCandidateSet,
     type ClassificationRequest,
     TransientClassificationError,
 } from './jev-classifier';
+import { buildClassificationRequest } from './report-processor';
 import { derivePairRules, type RulesParticipant } from './rules';
 
 const featureVector: ClassificationRequest['featureVector'] = {
-    schema_version: 'pair-feature-vector-v1',
+    schema_version: 'pair-feature-vector-v2',
+    participant_role_codes: {
+        participant_a: ['product'],
+        participant_b: ['backend'],
+    },
     participant_dimension_bands: {
         participant_a: { ambition: 3 },
         participant_b: { ambition: 1 },
@@ -29,47 +35,94 @@ const featureVector: ClassificationRequest['featureVector'] = {
     narrative_tag_codes: [],
 };
 
+const set = (first: string, second: string): ChoiceCandidateSet => ({
+    criteria: { [first]: `${first} criterion`, [second]: `${second} criterion` },
+    fallback: first,
+});
+
 const request = (
     overrides: Partial<ClassificationRequest> = {},
 ): ClassificationRequest => ({
     featureVector,
-    publicArchetypeCandidates: [
-        'vision-reality',
-        'complementary-builders',
-        'cashflow-operators',
-    ],
-    forbiddenPublicArchetypes: [],
-    conservativePublicArchetypeId: 'complementary-builders',
+    choices: {
+        publicArchetype: set(
+            'archetype.complementary-builders',
+            'archetype.vision-reality',
+        ),
+        strongestAlignment: set('ambition', 'product'),
+        valuableComplement: set('operating', 'external'),
+        topRisk: set('dimension.risk', 'dimension.governance'),
+        mirrorMisread: set(
+            'mirror.accurate-model',
+            'mirror.asymmetric-model',
+        ),
+        privateRiskPattern: set(
+            'risk.parallel-solo-founders',
+            'risk.quiet-reactive',
+        ),
+        conversationPrompts: [
+            set('prompt.five-year-definition.1', 'prompt.hiring-window.1'),
+            set('prompt.cash-at-six-months.1', 'prompt.product-evidence.1'),
+            set('prompt.decision-deadlock.1', 'prompt.authority-model.1'),
+            set('prompt.conflict-latency.1', 'prompt.work-boundary.1'),
+            set('prompt.external-role.1', 'prompt.customer-crisis.1'),
+        ],
+    },
     ...overrides,
 });
 
+const setsFor = (input: ClassificationRequest) => ({
+    public_archetype: input.choices.publicArchetype,
+    strongest_alignment: input.choices.strongestAlignment,
+    valuable_complement: input.choices.valuableComplement,
+    top_risk: input.choices.topRisk,
+    mirror_misread: input.choices.mirrorMisread,
+    private_risk_pattern: input.choices.privateRiskPattern,
+    conversation_prompt_1: input.choices.conversationPrompts[0],
+    conversation_prompt_2: input.choices.conversationPrompts[1],
+    conversation_prompt_3: input.choices.conversationPrompts[2],
+    conversation_prompt_4: input.choices.conversationPrompts[3],
+    conversation_prompt_5: input.choices.conversationPrompts[4],
+});
+
 const responseFor = (
-    choice: string,
-    candidates: string[],
-    confidence = 0.9,
+    input: ClassificationRequest,
+    selections: Record<string, string> = {},
+    confidenceByQuestion: Record<string, number> = {},
 ) =>
     new Response(
         JSON.stringify({
-            model: 'typesafe/jev-1.13-20260917',
-            answers: {
-                public_archetype: {
-                    type: 'choice',
-                    choice,
-                    probabilities: Object.fromEntries(
-                        candidates.map((id) => [
-                            id,
-                            id === choice ? confidence : (1 - confidence) / 2,
-                        ]),
-                    ),
-                    confidence,
-                },
-            },
+            model: 'jev-1.13.0',
+            answers: Object.fromEntries(
+                Object.entries(setsFor(input)).map(([id, candidates]) => {
+                    const options = Object.keys(candidates.criteria);
+                    const choice = selections[id] ?? options[1] ?? options[0];
+                    const confidence = confidenceByQuestion[id] ?? 0.9;
+                    return [
+                        id,
+                        {
+                            type: 'choice',
+                            choice,
+                            probabilities: Object.fromEntries(
+                                options.map((option) => [
+                                    option,
+                                    option === choice
+                                        ? confidence
+                                        : (1 - confidence) /
+                                          Math.max(1, options.length - 1),
+                                ]),
+                            ),
+                            confidence,
+                        },
+                    ];
+                }),
+            ),
         }),
     );
 
 describe('bounded Jev classifier', () => {
-    it('pins the model and sends only the de-identified feature vector', async () => {
-        let sent: Record<string, unknown> | null = null;
+    it('asks all bounded questions and sends only the de-identified feature vector', async () => {
+        let sent: any = null;
         let endpoint = '';
         const input = request();
         const classifier = createJevClassifier({
@@ -79,10 +132,9 @@ describe('bounded Jev classifier', () => {
             fetcher: (async (url, init) => {
                 endpoint = String(url);
                 sent = JSON.parse(String(init?.body));
-                return responseFor(
-                    'vision-reality',
-                    input.publicArchetypeCandidates,
-                );
+                return responseFor(input, {
+                    public_archetype: 'archetype.vision-reality',
+                });
             }) as typeof fetch,
         });
 
@@ -92,19 +144,22 @@ describe('bounded Jev classifier', () => {
             source: 'jev',
             provider: 'typesafe',
             requestedModel: JEV_MODEL,
-            responseModel: 'typesafe/jev-1.13-20260917',
+            responseModel: 'jev-1.13.0',
             decisionSchemaVersion: JEV_DECISION_SCHEMA_VERSION,
-            confidence: 0.9,
-            selectedContentIds: ['archetype.vision-reality'],
+            publicArchetypeId: 'archetype.vision-reality',
         });
+        expect(result.promptIds).toHaveLength(5);
+        expect(new Set(result.promptIds).size).toBe(5);
+        expect(result.selectedContentIds).toContain(result.mirrorMisreadId);
+        expect(result.selectedContentIds).toHaveLength(8);
         expect(endpoint).toBe('https://api.typesafe.ai/v1/systemone');
-        expect(sent?.model).toBe(JEV_MODEL);
-        expect(sent?.state).toEqual({
+        expect(sent.model).toBe(JEV_MODEL);
+        expect(sent.state).toEqual({
             classification_schema_version: JEV_DECISION_SCHEMA_VERSION,
             pair_features: featureVector,
         });
-        const serializedState = JSON.stringify(sent?.state);
-        expect(serializedState).not.toMatch(
+        expect(Object.keys(sent.questions)).toHaveLength(11);
+        expect(JSON.stringify(sent.state)).not.toMatch(
             /email|user_id|pair_id|display_name|raw_answer|red_line|sensitive/i,
         );
     });
@@ -119,13 +174,9 @@ describe('bounded Jev classifier', () => {
             fetcher: (async (url, init) => {
                 const body = JSON.parse(String(init?.body));
                 calls.push({ endpoint: String(url), model: body.model });
-                if (calls.length === 1) {
-                    return new Response('', { status: 529 });
-                }
-                return responseFor(
-                    'vision-reality',
-                    input.publicArchetypeCandidates,
-                );
+                return calls.length === 1
+                    ? new Response('', { status: 529 })
+                    : responseFor(input);
             }) as typeof fetch,
         });
 
@@ -141,112 +192,90 @@ describe('bounded Jev classifier', () => {
                 model: OPENROUTER_JEV_MODEL,
             },
         ]);
-        expect(result).toMatchObject({
-            source: 'jev',
-            provider: 'openrouter',
-            publicArchetypeId: 'vision-reality',
-        });
+        expect(result.provider).toBe('openrouter');
     });
 
-    it('uses a conservative default confidence threshold when none is configured', async () => {
+    it('falls back only the individual low-confidence decision', async () => {
         const input = request();
         const classifier = createJevClassifier({
             jevApiKey: 'test-key',
             fetcher: (async () =>
                 responseFor(
-                    'vision-reality',
-                    input.publicArchetypeCandidates,
-                    DEFAULT_JEV_CONFIDENCE_THRESHOLD - 0.01,
+                    input,
+                    { public_archetype: 'archetype.vision-reality' },
+                    {
+                        mirror_misread:
+                            DEFAULT_JEV_CONFIDENCE_THRESHOLD - 0.01,
+                    },
                 )) as typeof fetch,
         });
 
         const result = await classifier.classify(input);
 
         expect(result).toMatchObject({
-            source: 'conservative',
+            source: 'mixed',
             provider: 'typesafe',
-            fallbackReason: 'below_confidence_threshold',
+            publicArchetypeId: 'archetype.vision-reality',
+            mirrorMisreadId: 'mirror.accurate-model',
+            fallbackReason: 'below_confidence_threshold:mirror_misread',
         });
     });
 
-    it('falls back on low confidence, malformed output, and provider failure', async () => {
+    it('rejects malformed typed output and provider failures', async () => {
         const input = request();
-        const cases = [
-            createJevClassifier({
-                jevApiKey: 'test-key',
-                confidenceThreshold: 0.8,
-                fetcher: (async () =>
-                    responseFor(
-                        'vision-reality',
-                        input.publicArchetypeCandidates,
-                        0.4,
-                    )) as typeof fetch,
-            }),
-            createJevClassifier({
-                jevApiKey: 'test-key',
-                confidenceThreshold: 0.8,
-                fetcher: (async () =>
-                    Response.json({ answers: { public_archetype: 'invalid' } })) as typeof fetch,
-            }),
-            createJevClassifier({
-                jevApiKey: 'test-key',
-                confidenceThreshold: 0.8,
-                fetcher: (async () => new Response('', { status: 401 })) as typeof fetch,
-            }),
-        ];
+        const malformed = createJevClassifier({
+            jevApiKey: 'test-key',
+            fetcher: (async () =>
+                Response.json({ model: 'jev-1.13.0', answers: {} })) as typeof fetch,
+        });
+        const failed = createJevClassifier({
+            jevApiKey: 'test-key',
+            fetcher: (async () => new Response('', { status: 401 })) as typeof fetch,
+        });
 
-        const results = await Promise.all(
-            cases.map((classifier) => classifier.classify(input)),
-        );
-        expect(results.map(({ source }) => source)).toEqual([
-            'conservative',
-            'conservative',
-            'conservative',
+        const results = await Promise.all([
+            malformed.classify(input),
+            failed.classify(input),
         ]);
+
         expect(results.map(({ fallbackReason }) => fallbackReason)).toEqual([
-            'below_confidence_threshold',
             'malformed_typed_output',
             'provider_failure',
         ]);
-        for (const result of results) {
-            expect(result.publicArchetypeId).toBe('complementary-builders');
-        }
+        expect(results.every(({ source }) => source === 'conservative')).toBe(
+            true,
+        );
     });
 
-    it('rejects forbidden or out-of-candidate typed choices', async () => {
-        const input = request({ forbiddenPublicArchetypes: ['vision-reality'] });
+    it('rejects choices outside each approved candidate set', async () => {
+        const input = request();
         const classifier = createJevClassifier({
             jevApiKey: 'test-key',
-            confidenceThreshold: 0.8,
             fetcher: (async () =>
-                responseFor(
-                    'vision-reality',
-                    input.publicArchetypeCandidates,
-                )) as typeof fetch,
+                responseFor(input, {
+                    private_risk_pattern: 'risk.not-approved',
+                })) as typeof fetch,
         });
 
         const result = await classifier.classify(input);
+
         expect(result.source).toBe('conservative');
         expect(result.fallbackReason).toBe('malformed_typed_output');
     });
 
-    it('marks rate limits and provider outages as retryable', async () => {
-        for (const status of [429, 503]) {
+    it('marks rate limits, outages, and timeouts as retryable', async () => {
+        for (const status of [429, 503, 529]) {
             const classifier = createJevClassifier({
                 jevApiKey: 'test-key',
-                confidenceThreshold: 0.8,
                 fetcher: (async () => new Response('', { status })) as typeof fetch,
             });
             await expect(classifier.classify(request())).rejects.toBeInstanceOf(
                 TransientClassificationError,
             );
         }
-    });
 
-    it('aborts a slow provider at the configured timeout', async () => {
-        const classifier = createJevClassifier({
+        const timeout = createJevClassifier({
             jevApiKey: 'test-key',
-            confidenceThreshold: 0.8,
             timeoutMs: 1,
             fetcher: ((_url, init) =>
                 new Promise((_resolve, reject) => {
@@ -255,13 +284,12 @@ describe('bounded Jev classifier', () => {
                     );
                 })) as typeof fetch,
         });
-
-        await expect(classifier.classify(request())).rejects.toThrow(
+        await expect(timeout.classify(request())).rejects.toThrow(
             'classifier_timeout',
         );
     });
 
-    it('accepts an approved alternative and rejects forbidden labels for all 20 mocks', async () => {
+    it('keeps public archetype choices approved for all 20 mocks', async () => {
         const rows = readFileSync(
             'docs/calibration/mock-pairs-v0.jsonl',
             'utf8',
@@ -288,58 +316,30 @@ describe('bounded Jev classifier', () => {
                 participant(row.participants.a),
                 participant(row.participants.b),
             );
+            const input = buildClassificationRequest(rules);
+            const promptCandidateIds = input.choices.conversationPrompts.flatMap(
+                ({ criteria }) => Object.keys(criteria),
+            );
+            expect(new Set(promptCandidateIds).size).toBe(promptCandidateIds.length);
             const approved = [
                 row.approved_labels.preferred_public_archetype,
                 ...row.approved_labels.acceptable_public_archetypes,
-            ];
+            ].map((id: string) => `archetype.${id}`);
             const choice = approved.find((id: string) =>
-                rules.publicFeatures.publicArchetypeCandidates.includes(id),
+                Object.hasOwn(input.choices.publicArchetype.criteria, id),
             );
             expect(choice).toBeDefined();
-            const input = request({
-                featureVector: rules.pairFeatureVector,
-                publicArchetypeCandidates:
-                    rules.publicFeatures.publicArchetypeCandidates,
-                forbiddenPublicArchetypes: [
-                    ...new Set([
-                        ...rules.publicFeatures.forbiddenPublicArchetypes,
-                        ...row.approved_labels.forbidden_public_archetypes,
-                    ]),
-                ],
-                conservativePublicArchetypeId:
-                    rules.conservativeResult.publicArchetypeId,
-            });
             const classifier = createJevClassifier({
                 jevApiKey: 'test-key',
-                confidenceThreshold: 0.8,
                 fetcher: (async () =>
-                    responseFor(
-                        choice,
-                        input.publicArchetypeCandidates,
-                    )) as typeof fetch,
+                    responseFor(input, { public_archetype: choice })) as typeof fetch,
             });
 
             const result = await classifier.classify(input);
-            expect(approved).toContain(result.publicArchetypeId);
-            expect(input.forbiddenPublicArchetypes).not.toContain(
-                result.publicArchetypeId,
-            );
 
-            for (const forbidden of row.approved_labels
-                .forbidden_public_archetypes) {
-                const forbiddenClassifier = createJevClassifier({
-                    jevApiKey: 'test-key',
-                    confidenceThreshold: 0.8,
-                    fetcher: (async () =>
-                        responseFor(
-                            forbidden,
-                            input.publicArchetypeCandidates,
-                        )) as typeof fetch,
-                });
-                const rejected = await forbiddenClassifier.classify(input);
-                expect(rejected.source).toBe('conservative');
-                expect(rejected.publicArchetypeId).not.toBe(forbidden);
-            }
+            expect(approved).toContain(result.publicArchetypeId);
+            expect(result.promptIds).toHaveLength(5);
+            expect(new Set(result.promptIds).size).toBe(5);
         }
     });
 });

@@ -73,6 +73,7 @@ export type PrivateReportFacts = {
     privatePattern: { id: string; title: string; copy: string; action: string };
     dimensions: ReportDimension[];
     mirror: {
+        interpretation: { id: string; title: string; copy: string };
         aPredictsB: { exact: number; near: number; opposite: number };
         bPredictsA: { exact: number; near: number; opposite: number };
     };

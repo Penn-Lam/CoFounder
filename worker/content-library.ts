@@ -31,6 +31,7 @@ const REQUIRED_COMMON_COPY_IDS = [
 const itemCollections = (library: typeof contentLibraryV1) => [
     ...library.publicArchetypes,
     ...library.privateRiskPatterns,
+    ...library.mirrorMisreads,
     library.reportVocabulary,
     ...library.reportModules,
     ...library.prompts,
@@ -92,6 +93,10 @@ export const validateContentLibrary = (
     check(
         riskKeys.size === catalog.private_risk_patterns.length,
         'Unexpected private risk pattern',
+    );
+    check(
+        library.mirrorMisreads.length === 4,
+        'Exactly four Mirror interpretations are required',
     );
     for (const archetype of library.publicArchetypes) {
         check(Boolean(archetype.title), `${archetype.id} has no Chinese title`);

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import questionBank from '../docs/calibration/question-bank-v0.json';
 import { processPairReport } from './report-processor';
 import {
+    JEV_DECISION_SCHEMA_VERSION,
+    JEV_MODEL,
     type PairClassifier,
     TransientClassificationError,
 } from './jev-classifier';
@@ -91,21 +93,79 @@ describe('private report processor', () => {
 
         expect(result.report.dimensions).toHaveLength(8);
         expect(result.report.prompts).toHaveLength(5);
+        expect(result.report.mirror.interpretation.id).toMatch(/^mirror\./);
         expect(result.report.sensitiveContext.attribution).toBe('unattributed');
         expect(result.report.versions).toEqual({
             questionSet: questionBank.question_set_version,
-            rules: 'cofounder-rules-v1',
-            content: 'cofounder-content-v1',
+            rules: 'cofounder-rules-v2',
+            content: 'cofounder-content-v2',
         });
         expect(result.report.classification).toMatchObject({
             source: 'conservative',
             provider: null,
             fallbackReason: 'provider_not_configured',
-            decisionSchemaVersion: 'cofounder-jev-decision-v1',
+            decisionSchemaVersion: 'cofounder-jev-decision-v2',
         });
         expect(serialized).not.toContain('core:Q1');
         expect(serialized).not.toContain('red-line:R1');
         expect(serialized).not.toMatch(/overall|aggregate|participant.*value/i);
+    });
+
+    it('assembles every narrative selection returned by Jev', async () => {
+        const classifier: PairClassifier = {
+            async classify(request) {
+                const last = (criteria: Record<string, string>) =>
+                    Object.keys(criteria).at(-1)!;
+                const promptIds = request.choices.conversationPrompts.map(
+                    ({ criteria }) => last(criteria),
+                ) as [string, string, string, string, string];
+                const publicArchetypeId = last(
+                    request.choices.publicArchetype.criteria,
+                );
+                const mirrorMisreadId = 'mirror.asymmetric-model';
+                const privateRiskPatternId = 'risk.high-pressure-pair';
+                return {
+                    source: 'jev',
+                    provider: 'typesafe',
+                    requestedModel: JEV_MODEL,
+                    responseModel: JEV_MODEL,
+                    decisionSchemaVersion: JEV_DECISION_SCHEMA_VERSION,
+                    probabilities: null,
+                    confidence: null,
+                    selectedContentIds: [
+                        publicArchetypeId,
+                        mirrorMisreadId,
+                        privateRiskPatternId,
+                        ...promptIds,
+                    ],
+                    fallbackReason: null,
+                    publicArchetypeId,
+                    alignmentDimension: last(
+                        request.choices.strongestAlignment.criteria,
+                    ),
+                    complementDimension: last(
+                        request.choices.valuableComplement.criteria,
+                    ),
+                    topRiskId: last(request.choices.topRisk.criteria),
+                    mirrorMisreadId,
+                    privateRiskPatternId,
+                    promptIds,
+                };
+            },
+        };
+        const test = harness();
+
+        const result = await processPairReport(test.repository, input.pairId, {
+            classifier,
+        });
+
+        expect(result.report.classification.source).toBe('jev');
+        expect(result.report.privatePattern.id).toBe('risk.high-pressure-pair');
+        expect(result.report.mirror.interpretation.id).toBe(
+            'mirror.asymmetric-model',
+        );
+        expect(result.report.prompts.map(({ id }) => id)).toHaveLength(5);
+        expect(new Set(result.report.prompts.map(({ id }) => id)).size).toBe(5);
     });
 
     it('returns the identical existing result on duplicate delivery', async () => {

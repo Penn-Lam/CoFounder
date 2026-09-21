@@ -251,6 +251,7 @@ type PrivateReport = {
         relationLabel: string;
     }>;
     mirror: {
+        interpretation: { title: string; copy: string };
         aPredictsB: { exact: number; near: number; opposite: number };
         bPredictsA: { exact: number; near: number; opposite: number };
     };
@@ -1084,6 +1085,8 @@ const PairTestFlow: React.FC<{
                     <section>
                         <h2>{report.sections.mirror.title}</h2>
                         <p>{report.sections.mirror.copy}</p>
+                        <h3>{report.mirror.interpretation.title}</h3>
+                        <p>{report.mirror.interpretation.copy}</p>
                         <div className="report-summary-grid">
                             <article>
                                 <h3>我对 TA 的预测</h3>

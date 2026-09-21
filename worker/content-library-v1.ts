@@ -1,6 +1,6 @@
 import type { Dimension } from './rules';
 
-export const CONTENT_LIBRARY_VERSION = 'cofounder-content-v1';
+export const CONTENT_LIBRARY_VERSION = 'cofounder-content-v2';
 
 export type ApprovedContent = {
     id: string;
@@ -180,6 +180,32 @@ export const contentLibraryV1 = {
             title: '并行单人公司',
             copy: '你们各自都能独立推进，但接口和共同决策可能变少，最后像两家公司共享一个名字。',
             action: '列出必须共同拥有的三类信息与每周同步的决策。',
+            approval,
+        },
+    ],
+    mirrorMisreads: [
+        {
+            id: 'mirror.accurate-model',
+            title: '彼此模型清晰',
+            copy: '你们对彼此关键选择的预测整体稳定。下一步不是继续猜，而是确认这种理解在压力情境中仍然成立。',
+            approval,
+        },
+        {
+            id: 'mirror.near-but-fragile',
+            title: '方向懂了，边界还模糊',
+            copy: '你们常能猜中大方向，但对触发条件和优先级的理解仍可能错位。关键决定前需要把“差不多”说具体。',
+            approval,
+        },
+        {
+            id: 'mirror.opposite-assumptions',
+            title: '关键假设相反',
+            copy: '部分预测与本人选择方向相反，说明你们可能正在用旧经验替代当下确认。先更新彼此模型，再讨论结论。',
+            approval,
+        },
+        {
+            id: 'mirror.asymmetric-model',
+            title: '理解深度不对称',
+            copy: '一方对另一方的预测明显更准确。这不代表谁更在意关系，但说明重要信息的流动目前并不对称。',
             approval,
         },
     ],
@@ -379,11 +405,11 @@ export const contentLibraryV1 = {
             'report.footer',
         ],
         promptIds: [
+            'prompt.five-year-definition.1',
+            'prompt.cash-at-six-months.1',
             'prompt.decision-deadlock.1',
             'prompt.conflict-latency.1',
             'prompt.external-role.1',
-            'prompt.work-boundary.1',
-            'prompt.unresolved-conflict.1',
         ],
         approval,
     },

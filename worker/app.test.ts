@@ -60,7 +60,7 @@ describe('Cofounder application shell', () => {
         const library = await response.json();
 
         expect(response.status).toBe(200);
-        expect(library.version).toBe('cofounder-content-v1');
+        expect(library.version).toBe('cofounder-content-v2');
         expect(library.publicArchetypes).toHaveLength(8);
         expect(library.privateRiskPatterns).toHaveLength(5);
         expect(library.prompts.length).toBeGreaterThanOrEqual(40);

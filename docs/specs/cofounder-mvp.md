@@ -120,7 +120,7 @@ Preserve the garage-style 3D homepage for desktop discovery, provide direct acce
 98. As a content editor, I want offline LLM drafting allowed but every visible item human-edited and approved, so that production is efficient without runtime generation.
 99. As a product owner, I want every reachable Content ID previewed before launch, so that no user receives TODO, missing, or generated placeholder copy.
 100. As a product owner, I want at least 40 approved conversation prompts covering all initial topics, so that result selection has meaningful breadth.
-101. As a product owner, I want the confidence threshold chosen after fixture evaluation rather than guessed in advance, so that fallback behavior reflects observed classification quality.
+101. As a product owner, I want the default `0.3` confidence threshold backed by fixture evaluation and recalibrated whenever the model or decision schema changes, so that fallback behavior reflects observed classification quality.
 102. As a support operator, I want ordinary answers accessible only through audited least-privilege procedures, so that calibration and support do not create unrestricted access.
 103. As a support operator, I want only anonymized aggregates for Sensitive Topics, so that individual protected answers remain unavailable even internally.
 104. As a product owner, I want current Chrome and Safari desktop flows fully verified, so that the visual experience works in primary desktop browsers.
@@ -166,7 +166,7 @@ Preserve the garage-style 3D homepage for desktop discovery, provide direct acce
 - Keep all exact calculations, ranking, thresholds, Mirror relationships, Conflict Flags, and Unresolved Topics in deterministic Rules.
 - Restrict Jev to bounded fuzzy selection among typed candidate identifiers for Public Archetype, Private Risk Pattern, narrative salience, non-Flag private-risk severity, and conversation content. Jev never changes a Rules-derived Conflict Flag severity.
 - Pin the evaluated Jev model and persist model ID, schema version, probabilities, confidence, and selected identifiers. Never recalculate a historical result on view.
-- Generate results asynchronously and idempotently. Retry transient Jev failure within a bounded five-minute window, then produce a complete Conservative Result. Apply a production confidence threshold only after fixture calibration.
+- Generate results asynchronously and idempotently. Retry transient Jev failure within a bounded five-minute window, then produce a complete Conservative Result. Apply the fixture-calibrated `0.3` threshold independently to each typed decision.
 - Assemble all visible prose from a versioned Content Library. Offline LLM drafting is permitted, but every item must be edited, approved, previewed, and versioned by a human. Jev never generates runtime prose.
 - Provide at least 40 Simplified Chinese conversation prompts across all initial topics, with extra variants for governance and conflict. Use bilingual display only for Public Archetype titles.
 - Preserve one immutable Classification Result and semantic Content Library version per Pair. Permit versioned spelling, accessibility, and security corrections that do not change meaning.
@@ -234,7 +234,7 @@ Preserve the garage-style 3D homepage for desktop discovery, provide direct acce
 
 - Pair Share Rate is the north-star metric: the proportion of created Pairs that reach at least one qualifying share action. Diagnose it through creator completion, invitation sharing, partner start, Pair Completion, result view, and share events.
 - The canonical calibration question bank is still marked as a calibration draft. Preserve scenario meaning and score maps while editorially normalizing wording before freezing the first production version.
-- Jev's production confidence threshold must be chosen from observed behavior on the complete fixture set, not selected as an arbitrary probability.
+- Jev's default `0.3` confidence threshold is based on the complete boundary and narrative fixture set and must be recalibrated when its model, decision schema, or candidate criteria change.
 - The existing outer 3D repository is MIT-licensed. The adapted inner-site repository and copied Receipt Printer source do not currently provide explicit licenses. The product owner has chosen to proceed with commit and deployment while Henry Heffernan's permission is pending. Credits and attribution do not themselves resolve that copyright risk.
 - Preserve complete Credits for Henry Heffernan, the original 3D repository and license, the adapted inner site, the Receipt Printer source, and all other third-party assets.
 - Previously downloaded receipt images cannot be revoked. Public-page withdrawal and name removal affect only product-controlled online representations.
