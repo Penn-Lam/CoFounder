@@ -2,8 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import {
     createJevClassifier,
+    DEFAULT_JEV_CONFIDENCE_THRESHOLD,
     JEV_DECISION_SCHEMA_VERSION,
     JEV_MODEL,
+    OPENROUTER_JEV_MODEL,
     type ClassificationRequest,
     TransientClassificationError,
 } from './jev-classifier';
@@ -68,11 +70,14 @@ const responseFor = (
 describe('bounded Jev classifier', () => {
     it('pins the model and sends only the de-identified feature vector', async () => {
         let sent: Record<string, unknown> | null = null;
+        let endpoint = '';
         const input = request();
         const classifier = createJevClassifier({
-            apiKey: 'test-key',
+            jevApiKey: 'official-key',
+            openRouterApiKey: 'fallback-key',
             confidenceThreshold: 0.8,
-            fetcher: (async (_url, init) => {
+            fetcher: (async (url, init) => {
+                endpoint = String(url);
                 sent = JSON.parse(String(init?.body));
                 return responseFor(
                     'vision-reality',
@@ -85,12 +90,14 @@ describe('bounded Jev classifier', () => {
 
         expect(result).toMatchObject({
             source: 'jev',
+            provider: 'typesafe',
             requestedModel: JEV_MODEL,
             responseModel: 'typesafe/jev-1.13-20260917',
             decisionSchemaVersion: JEV_DECISION_SCHEMA_VERSION,
             confidence: 0.9,
             selectedContentIds: ['archetype.vision-reality'],
         });
+        expect(endpoint).toBe('https://api.typesafe.ai/v1/systemone');
         expect(sent?.model).toBe(JEV_MODEL);
         expect(sent?.state).toEqual({
             classification_schema_version: JEV_DECISION_SCHEMA_VERSION,
@@ -102,12 +109,71 @@ describe('bounded Jev classifier', () => {
         );
     });
 
-    it('falls back on unset threshold, low confidence, malformed output, and provider failure', async () => {
+    it('uses OpenRouter only when the official API fails', async () => {
+        const calls: Array<{ endpoint: string; model: string }> = [];
+        const input = request();
+        const classifier = createJevClassifier({
+            jevApiKey: 'official-key',
+            openRouterApiKey: 'fallback-key',
+            confidenceThreshold: 0.8,
+            fetcher: (async (url, init) => {
+                const body = JSON.parse(String(init?.body));
+                calls.push({ endpoint: String(url), model: body.model });
+                if (calls.length === 1) {
+                    return new Response('', { status: 529 });
+                }
+                return responseFor(
+                    'vision-reality',
+                    input.publicArchetypeCandidates,
+                );
+            }) as typeof fetch,
+        });
+
+        const result = await classifier.classify(input);
+
+        expect(calls).toEqual([
+            {
+                endpoint: 'https://api.typesafe.ai/v1/systemone',
+                model: JEV_MODEL,
+            },
+            {
+                endpoint: 'https://openrouter.ai/api/v1/systemone',
+                model: OPENROUTER_JEV_MODEL,
+            },
+        ]);
+        expect(result).toMatchObject({
+            source: 'jev',
+            provider: 'openrouter',
+            publicArchetypeId: 'vision-reality',
+        });
+    });
+
+    it('uses a conservative default confidence threshold when none is configured', async () => {
+        const input = request();
+        const classifier = createJevClassifier({
+            jevApiKey: 'test-key',
+            fetcher: (async () =>
+                responseFor(
+                    'vision-reality',
+                    input.publicArchetypeCandidates,
+                    DEFAULT_JEV_CONFIDENCE_THRESHOLD - 0.01,
+                )) as typeof fetch,
+        });
+
+        const result = await classifier.classify(input);
+
+        expect(result).toMatchObject({
+            source: 'conservative',
+            provider: 'typesafe',
+            fallbackReason: 'below_confidence_threshold',
+        });
+    });
+
+    it('falls back on low confidence, malformed output, and provider failure', async () => {
         const input = request();
         const cases = [
-            createJevClassifier({ apiKey: 'test-key' }),
             createJevClassifier({
-                apiKey: 'test-key',
+                jevApiKey: 'test-key',
                 confidenceThreshold: 0.8,
                 fetcher: (async () =>
                     responseFor(
@@ -117,13 +183,13 @@ describe('bounded Jev classifier', () => {
                     )) as typeof fetch,
             }),
             createJevClassifier({
-                apiKey: 'test-key',
+                jevApiKey: 'test-key',
                 confidenceThreshold: 0.8,
                 fetcher: (async () =>
                     Response.json({ answers: { public_archetype: 'invalid' } })) as typeof fetch,
             }),
             createJevClassifier({
-                apiKey: 'test-key',
+                jevApiKey: 'test-key',
                 confidenceThreshold: 0.8,
                 fetcher: (async () => new Response('', { status: 401 })) as typeof fetch,
             }),
@@ -136,10 +202,8 @@ describe('bounded Jev classifier', () => {
             'conservative',
             'conservative',
             'conservative',
-            'conservative',
         ]);
         expect(results.map(({ fallbackReason }) => fallbackReason)).toEqual([
-            'confidence_threshold_unset',
             'below_confidence_threshold',
             'malformed_typed_output',
             'provider_failure',
@@ -152,7 +216,7 @@ describe('bounded Jev classifier', () => {
     it('rejects forbidden or out-of-candidate typed choices', async () => {
         const input = request({ forbiddenPublicArchetypes: ['vision-reality'] });
         const classifier = createJevClassifier({
-            apiKey: 'test-key',
+            jevApiKey: 'test-key',
             confidenceThreshold: 0.8,
             fetcher: (async () =>
                 responseFor(
@@ -169,7 +233,7 @@ describe('bounded Jev classifier', () => {
     it('marks rate limits and provider outages as retryable', async () => {
         for (const status of [429, 503]) {
             const classifier = createJevClassifier({
-                apiKey: 'test-key',
+                jevApiKey: 'test-key',
                 confidenceThreshold: 0.8,
                 fetcher: (async () => new Response('', { status })) as typeof fetch,
             });
@@ -181,7 +245,7 @@ describe('bounded Jev classifier', () => {
 
     it('aborts a slow provider at the configured timeout', async () => {
         const classifier = createJevClassifier({
-            apiKey: 'test-key',
+            jevApiKey: 'test-key',
             confidenceThreshold: 0.8,
             timeoutMs: 1,
             fetcher: ((_url, init) =>
@@ -246,7 +310,7 @@ describe('bounded Jev classifier', () => {
                     rules.conservativeResult.publicArchetypeId,
             });
             const classifier = createJevClassifier({
-                apiKey: 'test-key',
+                jevApiKey: 'test-key',
                 confidenceThreshold: 0.8,
                 fetcher: (async () =>
                     responseFor(
@@ -264,7 +328,7 @@ describe('bounded Jev classifier', () => {
             for (const forbidden of row.approved_labels
                 .forbidden_public_archetypes) {
                 const forbiddenClassifier = createJevClassifier({
-                    apiKey: 'test-key',
+                    jevApiKey: 'test-key',
                     confidenceThreshold: 0.8,
                     fetcher: (async () =>
                         responseFor(

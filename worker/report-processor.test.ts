@@ -99,6 +99,7 @@ describe('private report processor', () => {
         });
         expect(result.report.classification).toMatchObject({
             source: 'conservative',
+            provider: null,
             fallbackReason: 'provider_not_configured',
             decisionSchemaVersion: 'cofounder-jev-decision-v1',
         });

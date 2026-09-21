@@ -38,7 +38,7 @@ install_mint() {
 
 write_dev_vars() {
     local required=(BETTER_AUTH_SECRET RESEND_API_KEY EMAIL_FROM)
-    local optional=(OPENROUTER_API_KEY JEV_CONFIDENCE_THRESHOLD)
+    local optional=(JEV_API_KEY OPENROUTER_API_KEY JEV_CONFIDENCE_THRESHOLD)
     local name value escaped temporary missing_required=0
 
     for name in "${required[@]}"; do

@@ -80,6 +80,7 @@ export type Bindings = {
     ASSETS: AssetBinding;
     MEDIA: MediaBinding;
     REPORT_QUEUE: Queue<GenerateReportMessage>;
+    JEV_API_KEY?: string;
     OPENROUTER_API_KEY?: string;
     JEV_CONFIDENCE_THRESHOLD?: string;
     TURNSTILE_SECRET?: string;
@@ -1277,7 +1278,8 @@ const worker: ExportedHandler<Bindings, GenerateReportMessage> = {
             try {
                 await processPairReport(repository, message.body.pairId, {
                     classifier: createJevClassifier({
-                        apiKey: environment.OPENROUTER_API_KEY,
+                        jevApiKey: environment.JEV_API_KEY,
+                        openRouterApiKey: environment.OPENROUTER_API_KEY,
                         confidenceThreshold: confidenceThreshold(
                             environment.JEV_CONFIDENCE_THRESHOLD,
                         ),

@@ -1,9 +1,10 @@
 BETTER_AUTH_SECRET=replace-with-at-least-32-random-characters
 RESEND_API_KEY=re_replace_with_resend_api_key
 EMAIL_FROM=Cofounder <onboarding@resend.dev>
+JEV_API_KEY=jev_replace_with_typesafe_api_key
 OPENROUTER_API_KEY=sk_or_replace_with_openrouter_api_key
-# Leave unset until fixture evaluation establishes a production threshold.
-# JEV_CONFIDENCE_THRESHOLD=0.8
+# Optional; defaults conservatively to 0.8.
+# JEV_CONFIDENCE_THRESHOLD=0.85
 TURNSTILE_SITE_KEY=replace_with_turnstile_site_key
 TURNSTILE_SECRET=replace_with_turnstile_secret
 # Production must list only the exact production frontend hostnames.

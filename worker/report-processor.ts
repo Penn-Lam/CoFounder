@@ -207,6 +207,7 @@ export const processPairReport = async (
         },
         classification: {
             source: classification.source,
+            provider: classification.provider,
             requestedModel: classification.requestedModel,
             responseModel: classification.responseModel,
             decisionSchemaVersion: classification.decisionSchemaVersion,
