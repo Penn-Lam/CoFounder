@@ -793,6 +793,7 @@
 
 .account-note {
     color: #4e4e3b;
+    text-wrap: balance;
 }
 
 .turnstile-prompt {
@@ -1079,6 +1080,7 @@
 .receipt-printer-machine {
     --printer-inset: 12px;
     --printer-radius: 24px;
+    --printer-inner-radius: calc(var(--printer-radius) - var(--printer-inset));
     position: relative;
     isolation: isolate;
     display: block;
@@ -1088,11 +1090,24 @@
     box-sizing: border-box;
     border: 1px solid #090d0e;
     border-radius: var(--printer-radius);
-    background: #253033 url('../../static/textures/plastic-noise.svg') repeat;
-    background-size: 180px 180px;
+    background: #253033;
     box-shadow: 0 20px 36px -20px rgba(0, 0, 0, 0.7),
+        0 6px 14px -8px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.16),
         inset 0 -1px 0 rgba(0, 0, 0, 0.65);
+}
+
+.receipt-printer-machine::before {
+    position: absolute;
+    z-index: 0;
+    border-radius: inherit;
+    background: url('../../static/textures/plastic-noise.svg') repeat;
+    background-size: 180px 180px;
+    content: '';
+    inset: 0;
+    mix-blend-mode: multiply;
+    opacity: 0.3;
+    pointer-events: none;
 }
 
 .receipt-printer-slot {
@@ -1125,17 +1140,30 @@
 .receipt-printer-screen {
     position: relative;
     z-index: 1;
+    isolation: isolate;
     display: block;
     overflow: hidden;
     padding: 16px;
     border: 1px solid #090d0e;
-    border-radius: 12px;
+    border-radius: var(--printer-inner-radius);
     background: #101719;
     color: #f4f1df;
-    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.72);
+    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.8);
+}
+
+.receipt-printer-screen::after {
+    position: absolute;
+    z-index: 2;
+    border-radius: inherit;
+    box-shadow: inset 0 0 24px 4px rgba(0, 0, 0, 0.52);
+    content: '';
+    inset: 0;
+    pointer-events: none;
 }
 
 .receipt-printer-screen > div {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -1205,7 +1233,7 @@
 
 .receipt-printer-output {
     position: relative;
-    z-index: 3;
+    z-index: 50;
     display: block;
     width: calc(80% + 48px);
     max-width: 100%;
@@ -1242,6 +1270,31 @@
     display: block;
 }
 
+.receipt-paper-motion::before {
+    position: absolute;
+    z-index: 0;
+    border-radius: 2px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+    content: '';
+    inset: 12px 12px 16px;
+    pointer-events: none;
+}
+
+.receipt-paper-motion::after {
+    position: absolute;
+    right: 8%;
+    bottom: 0;
+    left: 8%;
+    z-index: 0;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.1);
+    content: '';
+    filter: blur(16px);
+    pointer-events: none;
+    transform: translateY(6px);
+}
+
 .receipt-printer-paper {
     position: relative;
     z-index: 1;
@@ -1249,7 +1302,8 @@
     min-height: 500px;
     padding: 26px 24px 34px;
     box-sizing: border-box;
-    background: #f3efe0 url('../../static/textures/receipt-paper.svg') center / cover;
+    background: #fffdf4 url('../../static/textures/receipt-paper.svg') center / cover;
+    background-blend-mode: soft-light;
     color: #131616;
     font-family: 'Courier New', monospace;
     text-align: left;
