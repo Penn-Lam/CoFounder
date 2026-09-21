@@ -38,13 +38,13 @@ const ERROR_MESSAGES: Record<string, string> = {
     DISPLAY_NAME_LENGTH: '显示名去除首尾空格后须为 1–32 个字符。',
     DISPLAY_NAME_CONTROL_CHARACTER: '显示名不能包含控制或隐藏格式字符。',
     ACKNOWLEDGEMENTS_REQUIRED: '请先阅读并同意服务条款与隐私说明。',
-    ACTIVE_PAIR_LIMIT: '最多只能同时保留 3 个未完成的 Pair。请继续已有测试。',
+    ACTIVE_PAIR_LIMIT: '最多只能同时保留 3 个未完成的测试。请继续已有测试。',
     REVISION_CONFLICT: '另一台设备已经保存了更新版本。请重新载入后继续。',
-    PAIR_TEST_SEALED: '这份 Pair Test 已提交，不能再修改。',
-    QUESTION_SET_NOT_FOUND: '这份 Pair Test 使用的题库版本暂时不可用。',
+    PAIR_TEST_SEALED: '这份测试已提交，不能再修改。',
+    QUESTION_SET_NOT_FOUND: '这份测试使用的题库版本暂时不可用。',
     INVITATION_NOT_FOUND: '邀请链接无效、已取消或已经被使用。',
     INVITATION_ACCEPTANCE_REQUIRED: '请明确接受邀请后继续。',
-    SELF_INVITATION: '不能使用创建 Pair 的同一个账户接受邀请。',
+    SELF_INVITATION: '不能使用发起测试的同一个账户接受邀请。',
     INVITATION_LOCKED: '合伙人已经加入，不能再重置或取消邀请。',
     DISPLAY_NAME_REQUIRED: '请先设置显示名，再接受邀请。',
 };
@@ -529,7 +529,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                         {stage === 'email' && (
                             <form className="account-form" onSubmit={sendOtp}>
                                 <label className="field-label" htmlFor="account-email">
-                                    EMAIL ID
+                                    邮箱
                                 </label>
                                 <input
                                     id="account-email"
@@ -632,7 +632,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                         {stage === 'profile' && (
                             <form className="account-form" onSubmit={completeProfile}>
                                 <label className="field-label" htmlFor="display-name">
-                                    ACCOUNT DISPLAY NAME
+                                    显示名称
                                 </label>
                                 <input
                                     id="display-name"
@@ -652,7 +652,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                     />
                                 )}
                                 <button type="submit" disabled={busy || !termsAccepted}>
-                                    创建 Account
+                                    创建账户
                                 </button>
                             </form>
                         )}
@@ -660,7 +660,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                         {stage === 'renewal' && (
                             <form className="account-form" onSubmit={renewConsent}>
                                 <p className="account-note">
-                                    登录和数据权利操作仍可使用。继续创建 Pair 或答题前，请确认当前版本。
+                                    登录和数据权利操作仍可使用。继续发起测试或答题前，请确认当前版本。
                                 </p>
                                 <TermsAgreement
                                     renewal
@@ -978,7 +978,7 @@ const PairTestFlow: React.FC<{
     if (pair.lifecycle === 'participant_withdrawn') {
         return (
             <section className="pair-complete" aria-live="polite">
-                <h1>这份 Pair 已失效</h1>
+                <h1>这份测试已失效</h1>
                 <p>
                     另一位参与者已撤回自己的数据。对方提供的答案已删除，旧报告和公开结果也已失效。
                 </p>
@@ -1073,7 +1073,7 @@ const PairTestFlow: React.FC<{
                             </ul>
                         )}
                         <h3>敏感话题（不归因）</h3>
-                        <p>以下只保留 Pair 层面的状态，不指出任何答案属于谁。</p>
+                        <p>以下只保留双方共同的状态，不指出任何答案属于谁。</p>
                         <ul>
                             {report.sensitiveContext.signals.map((signal) => (
                                 <li key={signal.topic}>
@@ -1126,7 +1126,7 @@ const PairTestFlow: React.FC<{
                                         }
                                         onClick={publishResult}
                                     >
-                                        PRINT / SHARE 新链接
+                                        打印 / 分享新链接
                                     </button>
                                     <button type="button" disabled={busy} onClick={unpublishResult}>
                                         撤回公开结果
@@ -1141,7 +1141,7 @@ const PairTestFlow: React.FC<{
                                         checked={showMyName}
                                         onChange={(event) => setShowMyName(event.target.checked)}
                                     />
-                                    <span>允许在这份 Pair 的公开 Receipt 上显示我的账户显示名</span>
+                                    <span>允许在这份测试的公开 Receipt 上显示我的账户显示名</span>
                                 </label>
                                 <p>未勾选时，你的一侧会显示匿名角色。另一位参与者独立决定自己的姓名权限。</p>
                                 <div className="public-result-actions">
@@ -1171,7 +1171,7 @@ const PairTestFlow: React.FC<{
                             </div>
                         ) : (
                             <button type="button" disabled={busy} onClick={() => setShowPublishControls(true)}>
-                                PRINT / SHARE
+                                打印 / 分享
                             </button>
                         )}
                         {error && <div className="pair-save-error" role="alert">{error}</div>}
@@ -1202,7 +1202,7 @@ const PairTestFlow: React.FC<{
                 {pair.role === 'creator' && pair.invitationStatus !== 'claimed' && (
                     <div className="invitation-panel">
                         <h2>邀请你的 Cofounder</h2>
-                        <p>打开链接只会显示邀请说明。对方登录并明确接受后，才会加入 Pair。</p>
+                        <p>打开链接只会显示邀请说明。对方登录并明确接受后，才会加入这次测试。</p>
                         {invitationPath ? (
                             <>
                                 <output>{window.location.origin}{invitationPath}</output>
@@ -1247,11 +1247,11 @@ const PairTestFlow: React.FC<{
                     </div>
                 )}
                 {pair.role === 'partner' && (
-                    <p>你的提交已完成。双方完成后，Pair 会进入报告生成阶段。</p>
+                    <p>你的提交已完成。双方完成后，测试会进入报告生成阶段。</p>
                 )}
                 {error && <div className="pair-save-error" role="alert">{error}</div>}
                 <div className="pair-navigation">
-                    <button type="button" onClick={reload} disabled={busy}>刷新 Pair 状态</button>
+                    <button type="button" onClick={reload} disabled={busy}>刷新测试状态</button>
                     <button type="button" onClick={onExit}>返回首页</button>
                 </div>
             </section>
@@ -1267,7 +1267,7 @@ const PairTestFlow: React.FC<{
             profile.companyAuthority;
         return (
             <form className="pair-profile" onSubmit={saveProfile}>
-                <h1 ref={headingRef} tabIndex={-1}>先说现实，不说 Title</h1>
+                <h1 ref={headingRef} tabIndex={-1}>先说现实，不谈头衔</h1>
                 <p>这些是未计分的关系背景，会帮助后续理解你们的答案。</p>
                 <fieldset>
                     <legend>你们现在是什么状态？（可多选）</legend>
@@ -1423,7 +1423,7 @@ const PairTestFlow: React.FC<{
                 </div>
                 <div className="immutable-warning">
                     <strong>提交不可撤销</strong>
-                    <p>提交后答案会被封存，不能编辑。再次测试将创建新的 Pair Test。</p>
+                    <p>提交后答案会被封存，不能编辑。再次测试将创建一份新测试。</p>
                     <label>
                         <input
                             type="checkbox"
@@ -1437,7 +1437,7 @@ const PairTestFlow: React.FC<{
                 <div className="pair-navigation">
                     <button type="button" onClick={() => setReview(false)}>返回最后一题</button>
                     <button type="button" disabled={!confirmed || busy} onClick={submit}>
-                        {busy ? '正在封存…' : '确认提交 Pair Test'}
+                        {busy ? '正在封存…' : '确认提交测试'}
                     </button>
                 </div>
             </section>
@@ -1546,7 +1546,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             setActivePairs(pairList.pairs);
             setCurrentPair(null);
         } catch (caught) {
-            setError(caught instanceof Error ? caught.message : '无法载入 Pair Test。');
+            setError(caught instanceof Error ? caught.message : '无法载入测试。');
         } finally {
             setLoading(false);
         }
@@ -1686,17 +1686,17 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             left={compact ? 8 : 104}
             width={Math.max(320, window.innerWidth - (compact ? 16 : 160))}
             height={Math.max(420, window.innerHeight - (compact ? 48 : 100))}
-            windowTitle="Cofounder Diagnostics - Showcase 2026"
+            windowTitle="Cofounder 合伙人测试 - Showcase 2026"
             windowBarIcon="windowExplorerIcon"
             closeWindow={props.onClose}
             onInteract={props.onInteract}
             minimizeWindow={props.onMinimize}
             bottomLeftText={
                 currentPair
-                    ? `PAIR ${currentPair.pairId}`
+                    ? `测试 ${currentPair.pairId}`
                     : invitationToken
-                      ? 'PAIR INVITATION'
-                      : 'SYSTEM READY'
+                      ? '搭档邀请'
+                      : '准备就绪'
             }
         >
             <div className="diagnostics-browser">
@@ -1735,7 +1735,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                             {invitationPreview && (
                                 <>
                                     <h1>{invitationPreview.creatorDisplayName} 已经完成测试。</h1>
-                                    <p>现在轮到你。接受前不会加入 Pair，也不会看到对方的答案。</p>
+                                    <p>现在轮到你。接受前不会加入这次测试，也不会看到对方的答案。</p>
                                     <div className="partner-waiting-state">
                                         <strong>你将以 {invitationViewerName} 的身份加入。</strong>
                                         <strong>双方提交前，彼此都看不到逐题答案。</strong>
@@ -1765,20 +1765,20 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                                 34 道双人合伙关系压力测试。先完成自己的部分，再邀请你的 Cofounder。
                             </p>
                             <div className="diagnostics-status">
-                                <div><b>MODE</b><span>2 PARTICIPANTS</span></div>
-                                <div><b>DURATION</b><span>ABOUT 10 MIN</span></div>
-                                <div><b>ACTIVE PAIRS</b><span>{activeCreatedPairs} / 3</span></div>
+                                <div><b>测试方式</b><span>双人参与</span></div>
+                                <div><b>预计用时</b><span>约 10 分钟</span></div>
+                                <div><b>进行中的测试</b><span>{activeCreatedPairs} / 3</span></div>
                             </div>
                             {activePairs.length > 0 && (
                                 <section className="draft-list">
-                                    <h2>你的 Pair</h2>
+                                    <h2>我的测试</h2>
                                     {activePairs.map((pair) => (
                                         <button
                                             type="button"
                                             key={pair.pairId}
                                             onClick={() => openPair(pair)}
                                         >
-                                            <span>Pair {pair.pairId.slice(0, 8)}</span>
+                                            <span>测试 {pair.pairId.slice(0, 8)}</span>
                                             <b>{pairStatus(pair)}</b>
                                         </button>
                                     ))}
@@ -1802,7 +1802,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                                         Boolean(pairChallenge && !pairTurnstileToken)
                                     }
                                 >
-                                    {loading ? 'LOADING…' : 'NEW PAIR TEST'}
+                                    {loading ? '正在加载…' : '发起新测试'}
                                 </button>
                             </div>
                             <p className="diagnostics-disclaimer">

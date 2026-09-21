@@ -228,7 +228,9 @@
 .private-report {
     display: flex;
     width: min(100%, 860px);
+    min-width: 0;
     margin: 0 auto;
+    box-sizing: border-box;
     flex-direction: column;
     gap: 18px;
 }
@@ -304,8 +306,10 @@
 
 .pair-profile fieldset,
 .answer-options {
+    min-width: 0;
     margin: 0;
     padding: 14px;
+    box-sizing: border-box;
     border: 2px solid #102a2a;
 }
 
@@ -314,6 +318,11 @@
 .question-progress,
 .question-number {
     font-family: Terminal, monospace;
+}
+
+.pair-profile legend {
+    max-width: 100%;
+    white-space: normal;
 }
 
 .profile-options {
@@ -325,9 +334,15 @@
 .profile-options label,
 .immutable-warning label {
     display: flex;
+    min-width: 0;
     align-items: flex-start;
     gap: 8px;
     line-height: 1.4;
+}
+
+.profile-options span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .profile-options input,
@@ -1541,16 +1556,33 @@
 }
 
 @media (max-width: 640px) {
+    .window-drag-hitbox,
+    .window-resize-hitbox,
+    .window-drag-indicator,
+    .window-resize-indicator {
+        display: none;
+    }
+
     .browser-menu {
-        gap: 12px;
+        justify-content: space-between;
+        gap: 4px;
+        padding-right: 6px;
+        padding-left: 6px;
+    }
+
+    .address-bar > span,
+    .address-bar > strong {
+        display: none;
     }
 
     .diagnostics-content {
-        padding: 24px 18px 48px;
+        min-width: 0;
+        padding: 20px 12px 48px;
     }
 
     .diagnostics-content h1 {
-        font-size: 38px;
+        overflow-wrap: anywhere;
+        font-size: 34px;
     }
 
     .diagnostics-status {
@@ -1588,7 +1620,11 @@
     .pair-review h1,
     .pair-complete h1,
     .invite-claim h1 {
-        font-size: 32px;
+        font-size: 30px;
+    }
+
+    .pair-profile fieldset {
+        padding: 12px 10px;
     }
 
     .pair-navigation,

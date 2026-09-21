@@ -203,6 +203,7 @@ const Window: React.FC<WindowProps> = (props) => {
                 <div style={styles.windowBorderOuter}>
                     <div style={styles.windowBorderInner}>
                         <div
+                            className="window-drag-hitbox"
                             style={styles.dragHitbox}
                             onMouseDown={startDrag}
                         ></div>
@@ -270,6 +271,7 @@ const Window: React.FC<WindowProps> = (props) => {
                             </div>
                         </div>
                         <div
+                            className="window-resize-hitbox"
                             onMouseDown={startResize}
                             style={styles.resizeHitbox}
                         ></div>
@@ -325,6 +327,7 @@ const Window: React.FC<WindowProps> = (props) => {
             </div>
 
             <div
+                className="window-resize-indicator"
                 style={
                     !isResizing
                         ? {
@@ -347,6 +350,7 @@ const Window: React.FC<WindowProps> = (props) => {
                 />
             </div>
             <div
+                className="window-drag-indicator"
                 style={
                     !isDragging
                         ? {

@@ -88,9 +88,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
     };
 
     const startItems = [
-        { label: 'New Pair Test', action: newPair, icon: 'showcaseIcon' as const },
-        { label: 'My Pairs', action: myPairs, icon: 'windowExplorerIcon' as const },
-        { label: 'Privacy & Data', action: privacy, icon: 'computerBig' as const },
+        { label: '发起新测试', action: newPair, icon: 'showcaseIcon' as const },
+        { label: '我的测试', action: myPairs, icon: 'windowExplorerIcon' as const },
+        { label: '隐私与数据', action: privacy, icon: 'computerBig' as const },
         { label: 'Credits', action: credits, icon: 'credits' as const },
     ];
 
