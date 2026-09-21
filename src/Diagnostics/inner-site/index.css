@@ -205,18 +205,6 @@ a:focus-visible {
     color: #ffffff !important;
 }
 
-.mobile-garage-link {
-    position: fixed;
-    z-index: 200000;
-    right: 12px;
-    bottom: 42px;
-    padding: 8px 10px;
-    border: 2px outset #ffffff;
-    background: #c0c0c0;
-    color: #000080;
-    font: 14px MSSerif, sans-serif;
-}
-
 .site-button {
     box-sizing: border-box;
     background: var(--surface-hover);

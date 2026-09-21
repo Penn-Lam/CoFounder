@@ -211,17 +211,10 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     }
     if (!accountReady && !isContentReview) {
         return (
-            <>
-                <AccountLogin
-                    onComplete={() => setAccountReady(true)}
-                    onPrivacyData={() => window.location.assign('/desktop/privacy')}
-                />
-                {window.location.search.includes('entry=mobile') && (
-                    <a className="mobile-garage-link" href="/?experience=3d">
-                        体验完整 3D 车库
-                    </a>
-                )}
-            </>
+            <AccountLogin
+                onComplete={() => setAccountReady(true)}
+                onPrivacyData={() => window.location.assign('/desktop/privacy')}
+            />
         );
     }
 
@@ -304,11 +297,6 @@ const Desktop: React.FC<DesktopProps> = (props) => {
                 privacy={() => openFromStart('privacy')}
                 credits={() => openFromStart('credits')}
             />
-            {window.location.search.includes('entry=mobile') && (
-                <a className="mobile-garage-link" href="/?experience=3d">
-                    体验完整 3D 车库
-                </a>
-            )}
             {receipt && (
                 <ReceiptPrinterOverlay
                     {...receipt}

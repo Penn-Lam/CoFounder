@@ -25,7 +25,7 @@ Preserve the garage-style 3D homepage for desktop discovery, provide direct acce
 3. As a visitor, I want to enter through the 3D garage or skip directly to Diagnostics, so that the visual experience is optional rather than a barrier.
 4. As a desktop visitor, I want the 3D garage to lead into one coherent Diagnostics Application, so that the retro environment feels like part of the product.
 5. As a mobile visitor, I want to enter the touch-friendly 2D Diagnostics Application by default, so that I do not have to navigate a desktop 3D scene.
-6. As a mobile visitor, I want an optional path to the complete 3D experience, so that the richer presentation remains discoverable.
+6. As a mobile visitor, I want the 2D Diagnostics Application free of a floating 3D-garage link, so that the registration and test flow stay focused.
 7. As a visitor following an Invitation Link, authentication return, or result link, I want to enter the relevant Diagnostics state directly, so that I do not have to traverse the garage first.
 8. As a prospective Participant, I want to see the entertainment-product disclaimer before beginning, so that I do not mistake the result for scientific or professional advice.
 9. As a prospective Participant, I want to confirm that I am at least 14 without providing a birth date, so that eligibility requires minimal personal data.

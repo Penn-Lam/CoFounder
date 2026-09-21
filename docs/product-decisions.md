@@ -103,7 +103,7 @@ This document records the settled product decisions from the design interview. A
 - On the homepage, offer `Enter the Garage` and a secondary `Skip to Diagnostics` action without requiring the 3D experience.
 - After the desktop user explicitly enters the garage, enable office ambience and interaction sounds with a persistent mute control. Keep mobile muted by default.
 - Replace the outer Henry identity with the product name, `AI Cofounder Diagnostics`, clock, and mute control; remove free-camera controls from the product experience.
-- Treat a small viewport or coarse pointer as a signal to default to the mobile 2D application, while still offering a path to the complete 3D experience.
+- Treat a small viewport or coarse pointer as a signal to enter the mobile 2D application without displaying a floating link back to the 3D garage.
 - Preserve the shutdown terminal and restart mechanics with product-specific copy, but remove Henry's personal shutdown jokes and assets.
 - Require keyboard operation throughout the Pair Test. Respect `prefers-reduced-motion` across camera movement, CRT effects, terminal typing, and receipt printing.
 - Fully verify the desktop experience in current Chrome and Safari, and the direct 2D experience in iOS Safari and Android Chrome. Smoke-test the core flow in Firefox rather than promising complete visual parity across every browser.
