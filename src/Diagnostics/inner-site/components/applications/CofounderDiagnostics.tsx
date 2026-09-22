@@ -556,6 +556,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                 <div className="form-actions">
                                     <button
                                         type="submit"
+                                        className="button-primary"
                                         disabled={
                                             busy ||
                                             !termsAccepted ||
@@ -621,6 +622,7 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                     </button>
                                     <button
                                         type="submit"
+                                        className="button-primary"
                                         disabled={busy || otpExpiresSeconds <= 0}
                                     >
                                         验证并登录
@@ -651,7 +653,11 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                         onChange={setTermsAccepted}
                                     />
                                 )}
-                                <button type="submit" disabled={busy || !termsAccepted}>
+                                <button
+                                    type="submit"
+                                    className="button-primary"
+                                    disabled={busy || !termsAccepted}
+                                >
                                     创建账户
                                 </button>
                             </form>
@@ -667,7 +673,11 @@ export const AccountLogin: React.FC<AccountLoginProps> = ({
                                     accepted={termsAccepted}
                                     onChange={setTermsAccepted}
                                 />
-                                <button type="submit" disabled={busy || !termsAccepted}>
+                                <button
+                                    type="submit"
+                                    className="button-primary"
+                                    disabled={busy || !termsAccepted}
+                                >
                                     确认并继续
                                 </button>
                                 {onPrivacyData && (
@@ -1118,6 +1128,7 @@ const PairTestFlow: React.FC<{
                                     </button>
                                     <button
                                         type="button"
+                                        className="button-primary"
                                         disabled={
                                             busy ||
                                             Boolean(
@@ -1155,6 +1166,7 @@ const PairTestFlow: React.FC<{
                                     ) : (
                                         <button
                                             type="button"
+                                            className="button-primary"
                                             disabled={
                                                 busy ||
                                                 Boolean(
@@ -1170,7 +1182,12 @@ const PairTestFlow: React.FC<{
                                 </div>
                             </div>
                         ) : (
-                            <button type="button" disabled={busy} onClick={() => setShowPublishControls(true)}>
+                            <button
+                                type="button"
+                                className="button-primary"
+                                disabled={busy}
+                                onClick={() => setShowPublishControls(true)}
+                            >
                                 打印 / 分享
                             </button>
                         )}
@@ -1368,7 +1385,11 @@ const PairTestFlow: React.FC<{
                 {error && <div className="pair-save-error" role="alert">{error}</div>}
                 <div className="pair-navigation">
                     <button type="button" onClick={onExit}>退出</button>
-                    <button type="submit" disabled={!complete || busy}>
+                    <button
+                        type="submit"
+                        className="button-primary"
+                        disabled={!complete || busy}
+                    >
                         {busy ? '正在保存…' : '保存并开始 34 道测试题'}
                     </button>
                 </div>
@@ -1436,7 +1457,12 @@ const PairTestFlow: React.FC<{
                 {error && <div className="pair-save-error" role="alert">{error}</div>}
                 <div className="pair-navigation">
                     <button type="button" onClick={() => setReview(false)}>返回最后一题</button>
-                    <button type="button" disabled={!confirmed || busy} onClick={submit}>
+                    <button
+                        type="button"
+                        className="button-primary"
+                        disabled={!confirmed || busy}
+                        onClick={submit}
+                    >
                         {busy ? '正在封存…' : '确认提交测试'}
                     </button>
                 </div>
@@ -1457,13 +1483,10 @@ const PairTestFlow: React.FC<{
     return (
         <section className="pair-question">
             <div className="question-progress">
-                <span>{sectionName}</span>
+                <span>{sectionName} · {current.section === 'mirror' ? `M-${current.id}` : current.id}</span>
                 <span>{sectionPosition} / {sectionTotal}</span>
             </div>
             <progress value={sectionPosition} max={sectionTotal} />
-            <p className="question-number">
-                {current.section === 'mirror' ? `M-${current.id}` : current.id}
-            </p>
             <h1 ref={headingRef} tabIndex={-1}>{current.prompt}</h1>
             <fieldset className="answer-options">
                 <legend className="sr-only">选择一个答案</legend>
@@ -1504,6 +1527,7 @@ const PairTestFlow: React.FC<{
                 </button>
                 <button
                     type="button"
+                    className="button-primary"
                     onClick={() =>
                         navigate(questionIndex === questions.length - 1 ? 'review' : questionIndex + 1)
                     }
@@ -1689,7 +1713,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
             left={compact ? 8 : 104}
             width={Math.max(320, window.innerWidth - (compact ? 16 : 160))}
             height={Math.max(420, window.innerHeight - (compact ? 48 : 100))}
-            windowTitle="Cofounder 合伙人测试 - Showcase 2026"
+            windowTitle="Cofounder Diagnostics"
             windowBarIcon="windowExplorerIcon"
             closeWindow={props.onClose}
             onInteract={props.onInteract}
@@ -1748,6 +1772,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                                         <button type="button" onClick={leaveInvitation}>暂不接受</button>
                                         <button
                                             type="button"
+                                            className="button-primary"
                                             disabled={loading}
                                             onClick={claimInvitation}
                                         >
@@ -1798,6 +1823,7 @@ const CofounderDiagnostics: React.FC<CofounderDiagnosticsProps> = (props) => {
                             <div className="diagnostics-actions">
                                 <button
                                     type="button"
+                                    className="button-primary"
                                     onClick={createPair}
                                     disabled={
                                         loading ||

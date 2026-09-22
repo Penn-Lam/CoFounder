@@ -162,11 +162,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
                             )}
                         >
                             <Icon
-                                size={18}
+                                size={16}
                                 icon="windowsStartIcon"
                                 style={styles.startIcon}
                             />
-                            <p className="toolbar-text ">Start</p>
+                            <p className="toolbar-text">Start</p>
                         </div>
                     </button>
                     <div className="os-taskbar-tabs" style={styles.toolbarTabsContainer}>
@@ -195,7 +195,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                                         )}
                                     >
                                         <Icon
-                                            size={18}
+                                            size={16}
                                             icon={windows[key].icon}
                                             style={styles.tabIcon}
                                         />
@@ -403,11 +403,10 @@ const styles: StyleSheetCSS = {
         borderLeftColor: Colors.darkGray,
     },
     volumeIcon: {
-        cursor: 'pointer',
-        height: 18,
+        width: 16,
     },
     tabText: {
-        fontSize: 14,
+        fontSize: 12,
         fontFamily: 'MSSerif',
     },
     timeText: {

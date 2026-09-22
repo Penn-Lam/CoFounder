@@ -229,7 +229,6 @@ const PrivacyData: React.FC<PrivacyDataProps> = (props) => {
                                 已经下载或被他人保存的 Receipt 图片和 QR 无法远程收回。
                             </p>
                             <button
-                                className="danger-button"
                                 type="button"
                                 disabled={busy}
                                 onClick={() => beginAction({ type: 'account' })}
@@ -255,7 +254,13 @@ const PrivacyData: React.FC<PrivacyDataProps> = (props) => {
                                     value={otp}
                                     onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
                                 />
-                                <button type="submit" disabled={busy || otp.length !== 6}>验证</button>
+                                <button
+                                    type="submit"
+                                    className="button-primary"
+                                    disabled={busy || otp.length !== 6}
+                                >
+                                    验证
+                                </button>
                             </form>
                         ) : (
                             <div>
@@ -266,7 +271,7 @@ const PrivacyData: React.FC<PrivacyDataProps> = (props) => {
                                 </p>
                                 <div className="public-result-actions">
                                     <button type="button" onClick={() => setPending(null)}>取消</button>
-                                    <button className="danger-button" type="button" disabled={busy} onClick={confirmAction}>
+                                    <button className="danger-button button-primary" type="button" disabled={busy} onClick={confirmAction}>
                                         确认执行不可撤销操作
                                     </button>
                                 </div>

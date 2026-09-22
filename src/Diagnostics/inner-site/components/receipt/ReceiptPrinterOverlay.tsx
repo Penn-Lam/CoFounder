@@ -157,7 +157,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
             <ReceiptPrinter.Root stage={stage}>
                 <ReceiptPrinter.Machine>
                     <ReceiptPrinter.Header>
-                        <strong>COFOUNDER / 2026</strong>
+                        <strong>COFOUNDER / {new Date().getFullYear()}</strong>
                         <span>PAIR OUTPUT</span>
                     </ReceiptPrinter.Header>
                     <ReceiptPrinter.Screen>

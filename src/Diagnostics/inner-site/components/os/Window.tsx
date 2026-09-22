@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { IconName } from '../../assets/icons';
-import colors from '../../constants/colors';
 import Colors from '../../constants/colors';
 import Icon from '../general/Icon';
 import Button from './Button';
@@ -17,7 +16,6 @@ export interface WindowProps {
     left: number;
     windowTitle?: string;
     bottomLeftText?: string;
-    rainbow?: boolean;
     windowBarColor?: string;
     windowBarIcon?: IconName;
     onWidthChange?: (width: number) => void;
@@ -190,7 +188,7 @@ const Window: React.FC<WindowProps> = (props) => {
     };
 
     return (
-        <div onMouseDown={onWindowInteract} style={styles.container}>
+        <div onMouseDown={onWindowInteract}>
             <div
                 className="os-window"
                 style={Object.assign({}, styles.window, {
@@ -209,7 +207,6 @@ const Window: React.FC<WindowProps> = (props) => {
                             onMouseDown={startDrag}
                         ></div>
                         <div
-                            className={props.rainbow ? 'rainbow-wrapper' : ''}
                             style={Object.assign(
                                 {},
                                 styles.topBar,
@@ -233,13 +230,13 @@ const Window: React.FC<WindowProps> = (props) => {
                                         size={16}
                                     />
                                 ) : (
-                                    <div style={{ width: 16 }} />
+                                    <div style={{ width: 24 }} />
                                 )}
                                 <p
                                     style={
                                         windowActive
                                             ? {}
-                                            : { color: colors.lightGray }
+                                            : { color: Colors.lightGray }
                                     }
                                     className="showcase-header"
                                 >
@@ -337,7 +334,7 @@ const Window: React.FC<WindowProps> = (props) => {
                               pointerEvents: 'none',
                           }
                         : {
-                              zIndex: 1000,
+                              zIndex: 99999,
                               cursor: 'nwse-resize',
                               mixBlendMode: 'difference',
                           }
@@ -360,7 +357,7 @@ const Window: React.FC<WindowProps> = (props) => {
                               pointerEvents: 'none',
                           }
                         : {
-                              zIndex: 1000,
+                              zIndex: 99999,
                               cursor: 'move',
                               mixBlendMode: 'difference',
                           }
@@ -384,22 +381,22 @@ const styles: StyleSheetCSS = {
     dragHitbox: {
         position: 'absolute',
         width: 'calc(100% - 70px)',
-        height: 48,
+        height: 26,
         zIndex: 10000,
-        top: -8,
+        top: -2,
         left: -4,
         cursor: 'move',
     },
     windowBorderOuter: {
         border: `1px solid ${Colors.black}`,
-        borderTopColor: colors.lightGray,
-        borderLeftColor: colors.lightGray,
+        borderTopColor: Colors.lightGray,
+        borderLeftColor: Colors.lightGray,
         flex: 1,
     },
     windowBorderInner: {
         border: `1px solid ${Colors.darkGray}`,
-        borderTopColor: colors.white,
-        borderLeftColor: colors.white,
+        borderTopColor: Colors.white,
+        borderLeftColor: Colors.white,
         flex: 1,
         padding: 2,
 
@@ -424,18 +421,18 @@ const styles: StyleSheetCSS = {
     },
     contentOuter: {
         border: `1px solid ${Colors.white}`,
-        borderTopColor: colors.darkGray,
-        borderLeftColor: colors.darkGray,
+        borderTopColor: Colors.darkGray,
+        borderLeftColor: Colors.darkGray,
         flexGrow: 1,
 
-        marginTop: 8,
-        marginBottom: 8,
+        marginTop: 4,
+        marginBottom: 4,
         overflow: 'hidden',
     },
     contentInner: {
         border: `1px solid ${Colors.lightGray}`,
-        borderTopColor: colors.black,
-        borderLeftColor: colors.black,
+        borderTopColor: Colors.black,
+        borderLeftColor: Colors.black,
         flex: 1,
         overflow: 'hidden',
     },
@@ -458,8 +455,8 @@ const styles: StyleSheetCSS = {
     },
     insetBorder: {
         border: `1px solid ${Colors.white}`,
-        borderTopColor: colors.darkGray,
-        borderLeftColor: colors.darkGray,
+        borderTopColor: Colors.darkGray,
+        borderLeftColor: Colors.darkGray,
         padding: 2,
     },
     bottomResizeContainer: {

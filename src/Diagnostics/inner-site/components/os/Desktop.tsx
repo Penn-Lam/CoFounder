@@ -30,7 +30,7 @@ const APPLICATIONS: {
 } = {
     diagnostics: {
         key: 'diagnostics',
-        name: 'Cofounder 合伙人测试',
+        name: 'Cofounder Diagnostics',
         shortcutIcon: 'showcaseIcon',
         component: CofounderDiagnostics,
     },
@@ -56,7 +56,6 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     const [shortcuts, setShortcuts] = useState<DesktopShortcutProps[]>([]);
 
     const [shutdown, setShutdown] = useState(false);
-    const [numShutdowns, setNumShutdowns] = useState(1);
 
     useEffect(() => {
         if (shutdown === true) {
@@ -95,7 +94,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         });
 
         newShortcuts.forEach((shortcut) => {
-            if (shortcut.shortcutName === 'Cofounder 合伙人测试') {
+            if (shortcut.shortcutName === 'Cofounder Diagnostics') {
                 shortcut.onOpen();
             }
         });
@@ -171,9 +170,8 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     const startShutdown = useCallback(() => {
         setTimeout(() => {
             setShutdown(true);
-            setNumShutdowns(numShutdowns + 1);
         }, 600);
-    }, [numShutdowns]);
+    }, []);
 
     const addWindow = useCallback(
         (key: string, element: JSX.Element) => {
@@ -305,10 +303,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
             )}
         </div>
     ) : (
-        <ShutdownSequence
-            setShutdown={setShutdown}
-            numShutdowns={numShutdowns}
-        />
+        <ShutdownSequence setShutdown={setShutdown} />
     );
 };
 
@@ -317,11 +312,6 @@ const styles: StyleSheetCSS = {
         minHeight: '100%',
         flex: 1,
         backgroundColor: Colors.turquoise,
-    },
-    shutdown: {
-        minHeight: '100%',
-        flex: 1,
-        backgroundColor: '#1d2e2f',
     },
     shortcutContainer: {
         position: 'absolute',

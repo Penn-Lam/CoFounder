@@ -73,25 +73,25 @@ p b {
 }
 
 .showcase-header {
-    font-family: lores-15-bold-alt-oakland;
-    font-size: 15px;
+    font-family: MSSerif, sans-serif;
+    font-size: 12px;
     color: white;
 }
 
 .toolbar-text {
-    font-family: lores-15-bold-alt-oakland;
-    font-size: 18px;
+    font-family: MSSerif, sans-serif;
+    font-size: 14px;
     color: black;
 }
 
 h1 {
-    font-family: gastromond, sans-serif;
-    font-size: 64px;
+    font-family: MillenniumBold, 'Times New Roman', Times, serif;
+    font-size: 48px;
 }
 
 h2 {
     font-family: MillenniumBold, 'Times New Roman', Times, serif;
-    font-size: 32px;
+    font-size: 30px;
 }
 
 h3 {
@@ -110,11 +110,6 @@ li {
     margin-bottom: 16px;
 }
 
-.blend {
-    mix-blend-mode: screen;
-    background-color: red;
-}
-
 :root {
     --button-highlight: #ffffff;
     --button-face: #747474;
@@ -129,24 +124,6 @@ li {
         inset 1px 1px var(--button-highlight);
     --border-raised-inner: inset -2px -2px var(--button-shadow),
         inset 2px 2px var(--button-face);
-}
-
-.big-button-container {
-    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
-    padding: 24px;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-.big-button-container:hover {
-    background-color: var(--surface-hover);
-}
-
-.big-button-container:active {
-    box-shadow: var(--border-raised-inner), var(--border-raised-outer);
-    /* box-shadow: inset var(--border-raised-inner),
-        inset var(--border-raised-outer); */
-    background-color: var(--surface);
 }
 
 input {
@@ -172,10 +149,6 @@ textarea {
     font-size: 18px;
 }
 
-.music-controller-container {
-    box-shadow: var(--border-field);
-}
-
 textarea:focus,
 textarea:active,
 input:focus,
@@ -184,109 +157,18 @@ input:active {
     background-color: #fbffc4;
 }
 
-.button-border {
-    box-sizing: border-box;
-    background: var(--surface-hover);
-    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
-    border-radius: 0;
-    border: none;
-}
-
 button:focus-visible,
 [role='button']:focus-visible,
 a:focus-visible {
-    outline: 2px solid #ffff00;
+    outline: 2px solid #000080;
     outline-offset: 2px;
 }
 
 .start-menu-option:hover,
 .start-menu-option:focus-visible {
-    background: #000080 !important;
-    color: #ffffff !important;
-}
-
-.site-button {
-    box-sizing: border-box;
-    background: var(--surface-hover);
-    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
-    border-radius: 0;
-    border: none;
-    color: black;
-    font-size: 18px;
-    /* flex-shrink: 1; */
-    padding: 4px 12px;
+    background: #000080;
+    color: #ffffff;
     cursor: pointer;
-    font-family: Millennium;
-    overflow: hidden;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-.site-button:hover {
-    background-color: var(--surface);
-}
-
-.site-button:active {
-    background-color: var(--button-shadow);
-}
-
-.site-button:disabled {
-    background-color: var(--button-shadow);
-    /* cursor cross */
-    cursor: not-allowed;
-}
-
-.captioned-image {
-    align-self: center;
-    display: flex;
-    align-items: center;
-    text-align: center;
-    flex-direction: column;
-    width: 100%;
-    margin-bottom: 32px;
-}
-
-.captioned-image img {
-    width: 100%;
-}
-
-.text-block {
-    margin-top: 16px;
-    margin-bottom: 32px;
-    display: flex;
-    flex-direction: column;
-    text-align: justify;
-}
-
-.site-page {
-    display: flex;
-    left: 0px;
-    right: 0px;
-    position: absolute;
-    bottom: 0px;
-    top: 0px;
-    overflow: hidden;
-    transform: translate3d(0, 0, 0);
-    overflow: hidden;
-}
-
-.site-page-content {
-    display: flex;
-    flex-direction: column;
-    margin-left: 300px;
-    width: 100%;
-    padding: 64px;
-    padding-top: 32px;
-    padding-left: 16px;
-    overflow-y: scroll;
-}
-
-.router-link:visited {
-    color: purple;
 }
 
 .loading::after {
@@ -313,91 +195,6 @@ a:focus-visible {
     }
 }
 
-@keyframes arrow {
-    from {
-        opacity: 0;
-        transform: scale(1, 0);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1, 1);
-    }
-    to {
-        transform: scale(1, 1);
-    }
-}
-
-.arrow-mount {
-    transition: opacity;
-    animation: arrow 0.2s normal forwards ease-out;
-}
-
-.rainbow-wrapper {
-    background: linear-gradient(
-        124deg,
-        #ff2400,
-        #e81d1d,
-        #e8b71d,
-        #e3e81d,
-        #1de840,
-        #1ddde8,
-        #2b1de8,
-        #dd00f3,
-        #dd00f3
-    );
-    background-size: 1800% 1800%;
-
-    -webkit-animation: rainbow 18s ease infinite;
-    -z-animation: rainbow 18s ease infinite;
-    -o-animation: rainbow 18s ease infinite;
-    animation: rainbow 18s ease infinite;
-}
-
-@-webkit-keyframes rainbow {
-    0% {
-        background-position: 0% 82%;
-    }
-    50% {
-        background-position: 100% 19%;
-    }
-    100% {
-        background-position: 0% 82%;
-    }
-}
-@-moz-keyframes rainbow {
-    0% {
-        background-position: 0% 82%;
-    }
-    50% {
-        background-position: 100% 19%;
-    }
-    100% {
-        background-position: 0% 82%;
-    }
-}
-@-o-keyframes rainbow {
-    0% {
-        background-position: 0% 82%;
-    }
-    50% {
-        background-position: 100% 19%;
-    }
-    100% {
-        background-position: 0% 82%;
-    }
-}
-@keyframes rainbow {
-    0% {
-        background-position: 0% 82%;
-    }
-    50% {
-        background-position: 100% 19%;
-    }
-    100% {
-        background-position: 0% 82%;
-    }
-}
-
 .shortcut-border {
     background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%23ea3323' stroke-width='2' stroke-dasharray='1%2c1' stroke-dashoffset='0' stroke-linecap='butt'/%3e%3c/svg%3e");
 }
@@ -406,16 +203,8 @@ a:focus-visible {
     background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%23fff' stroke-width='2' stroke-dasharray='1%2c1' stroke-dashoffset='0' stroke-linecap='butt'/%3e%3c/svg%3e");
 }
 
-.notyf-announcer {
-    opacity: 0!important;
-}
-
-.notyf {
-    opacity: 0!important;
-}
-
-.start-menu-option:hover {
-    background-color: #0000aa;
-    cursor: pointer;
-    color: white;
+.os-caption-button:focus-visible,
+.os-desktop-shortcut:focus-visible {
+    outline: 1px dotted #000000;
+    outline-offset: -3px;
 }

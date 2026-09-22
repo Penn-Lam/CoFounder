@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { IconName } from '../../assets/icons';
 import colors from '../../constants/colors';
 import { Icon } from '../general';
@@ -19,9 +19,6 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
     const [isSelected, setIsSelected] = useState(false);
     const [shortcutId, setShortcutId] = useState('');
     const [lastSelected, setLastSelected] = useState(false);
-    const containerRef = useRef<any>();
-
-    const [scaledStyle, setScaledStyle] = useState({});
 
     const requiredIcon = require(`../../assets/icons/${icon}.png`);
     const [doubleClickTimerActive, setDoubleClickTimerActive] = useState(false);
@@ -34,22 +31,6 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
     useEffect(() => {
         setShortcutId(getShortcutId());
     }, [shortcutName, getShortcutId]);
-
-    useEffect(() => {
-        if (containerRef.current && Object.keys(scaledStyle).length === 0) {
-            //@ts-ignore
-            const boundingBox = containerRef.current.getBoundingClientRect();
-            setScaledStyle({
-                transformOrigin: 'center',
-                transform: 'scale(1.5)',
-                left: boundingBox.width / 4,
-                top: boundingBox.height / 4,
-                // transform: 'scale(1.5)',
-                // left: boundingBox.width / 4,
-                // top: boundingBox.height / 4,
-            });
-        }
-    }, [scaledStyle]);
 
     const handleClickOutside = useCallback(
         (event: MouseEvent) => {
@@ -91,7 +72,8 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
     return (
         <div
             id={`${shortcutId}`}
-            style={Object.assign({}, styles.appShortcut, scaledStyle)}
+            className="os-desktop-shortcut"
+            style={styles.appShortcut}
             onMouseDown={handleClickShortcut}
             onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -102,7 +84,6 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
             role="button"
             tabIndex={0}
             aria-label={`打开 ${shortcutName}`}
-            ref={containerRef}
         >
             <div id={`${shortcutId}`} style={styles.iconContainer}>
                 <div
@@ -117,7 +98,7 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
                         }
                     )}
                 />
-                <Icon icon={icon} style={styles.icon} />
+                <Icon icon={icon} />
             </div>
             <div
                 className={
@@ -135,7 +116,7 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
                     style={Object.assign(
                         {},
                         styles.shortcutText,
-                        invertText && !isSelected && { color: 'black' }
+                        invertText && !isSelected && { color: colors.black }
                     )}
                 >
                     {shortcutName}
@@ -148,7 +129,7 @@ const DesktopShortcut: React.FC<DesktopShortcutProps> = ({
 const styles: StyleSheetCSS = {
     appShortcut: {
         position: 'absolute',
-        width: 56,
+        width: 76,
 
         justifyContent: 'center',
         alignItems: 'center',
@@ -157,10 +138,9 @@ const styles: StyleSheetCSS = {
     },
     shortcutText: {
         cursor: 'pointer',
-        textOverflow: 'wrap',
         fontFamily: 'MSSerif',
-        color: 'white',
-        fontSize: 8,
+        color: colors.white,
+        fontSize: 12,
         paddingRight: 2,
         paddingLeft: 2,
     },

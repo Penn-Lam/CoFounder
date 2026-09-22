@@ -15,6 +15,7 @@ body {
     overflow: hidden;
 }
 
+/* Load-bearing: every vendored OS component's inline styles assume flex divs. Do not remove. */
 div {
     display: flex;
 }
@@ -22,11 +23,6 @@ div {
 #root {
     height: 100%;
 }
-
-.white {
-    color: #fff;
-}
-
 
 .blinking-cursor {
     background-color: #fff;

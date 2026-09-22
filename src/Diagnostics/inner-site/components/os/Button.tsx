@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { IconName } from '../../assets/icons';
 import Colors from '../../constants/colors';
 import { Icon } from '../general';
@@ -10,16 +10,6 @@ export interface ButtonProps {
 }
 
 const Button: React.FC<ButtonProps> = ({ icon, text, onClick }) => {
-    const [isHovering, setIsHovering] = useState(false);
-
-    const handleMouseEnter = () => {
-        setIsHovering(true);
-    };
-
-    const handleMouseLeave = () => {
-        setIsHovering(false);
-    };
-
     const outerBorderStyle = Object.assign(
         {},
         styles.outerBorder,
@@ -41,20 +31,13 @@ const Button: React.FC<ButtonProps> = ({ icon, text, onClick }) => {
     return (
         <button
             type="button"
+            className="os-caption-button"
             aria-label={text || (icon === 'close' ? '关闭窗口' : icon === 'minimize' ? '最小化窗口' : '最大化或还原窗口')}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             style={outerBorderStyle}
             onClick={click}
         >
-            <div
-                style={Object.assign(
-                    {},
-                    isHovering && { backgroundColor: Colors.darkGray },
-                    innerBorderStyle
-                )}
-            >
-                {icon && <Icon icon={icon} style={styles.icon} />}
+            <div style={innerBorderStyle}>
+                {icon && <Icon icon={icon} />}
                 {text && (
                     // <Text noSelect style={styles.text}>
                     //     {text}
@@ -80,6 +63,8 @@ const styles: StyleSheetCSS = {
         borderTopColor: Colors.lightGray,
         borderLeftColor: Colors.lightGray,
         flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 };
 
