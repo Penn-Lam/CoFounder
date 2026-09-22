@@ -28,6 +28,9 @@ The centered receipt animation is adapted from dqnamo's
 
 - `components/ReceiptPrinter.tsx`
 - `app/experiments/receipt-printer/receipt-printer-showcase.tsx`
+- `components/TactileButton.tsx` (adapted to `.tactile-button` CSS for the
+  header Share button)
+- `public/images/receipt-printer-logo.png` (header mask and paper logo)
 - `public/textures/{receipt-paper,plastic-noise}.svg`
 
 The compound component structure, stage timing, stepped feed keyframes, paper

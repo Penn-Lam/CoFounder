@@ -1,0 +1,15 @@
+scopes:
+    - name: app
+      description: core application logic, renderer, and scene setup in src/Application/; does not cover UI components
+    - name: ui
+      description: react-based interface, overlays, and interaction buttons in src/Application/UI/
+    - name: world
+      description: 3d scene entities, hitboxes, and monitor screen logic in src/Application/World/
+    - name: audio
+      description: audio manager and sound source configurations in src/Application/Audio/
+    - name: util
+      description: shared utilities, resources, time, and math helpers in src/Application/Utils/
+    - name: bundler
+      description: webpack build configurations and settings in bundler/; does not cover server logic
+    - name: server
+      description: node.js backend server and request handling in server/

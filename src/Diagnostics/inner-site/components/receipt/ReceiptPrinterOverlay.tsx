@@ -1,4 +1,4 @@
-import { DownloadSimple, LinkSimple, ShareNetwork, X } from '@phosphor-icons/react';
+import { ShareNetwork, X } from '@phosphor-icons/react';
 import { toPng } from 'html-to-image';
 import QRCode from 'qrcode';
 import React, { useEffect, useRef, useState } from 'react';
@@ -18,6 +18,9 @@ type ReceiptPrinterOverlayProps = PrintReceiptDetail & {
     onClose?: () => void;
 };
 
+const HOME_URL = '/';
+const LOGO_URL = '/images/receipt-printer-logo.png';
+
 const downloadUrl = (url: string, filename: string) => {
     const anchor = document.createElement('a');
     anchor.download = filename;
@@ -25,12 +28,15 @@ const downloadUrl = (url: string, filename: string) => {
     anchor.click();
 };
 
+const isCoarsePointer = () =>
+    window.matchMedia('(pointer: coarse)').matches;
+
 const ReceiptContent: React.FC<{ result: PublicResult; qrCode: string }> = ({
     result,
     qrCode,
 }) => (
     <>
-        <div className="receipt-mark" aria-hidden="true">CF</div>
+        <img className="receipt-logo receipt-logo-paper" src={LOGO_URL} alt="" aria-hidden="true" />
         <p className="receipt-kicker">COFOUNDER IDENTITY RECEIPT</p>
         <h1>{result.names.creator} × {result.names.partner}</h1>
         <div className="receipt-rule" />
@@ -48,7 +54,7 @@ const ReceiptContent: React.FC<{ result: PublicResult; qrCode: string }> = ({
         </dl>
         <div className="receipt-rule" />
         <p className="receipt-cta">{result.cta}</p>
-        {qrCode && <img className="receipt-qr" src={qrCode} alt="公开结果二维码" />}
+        {qrCode && <img className="receipt-qr" src={qrCode} alt="Cofounder 首页二维码" />}
         <p className="receipt-date">ISSUED {result.date}</p>
         <p className="receipt-version">
             Q {result.versions.questionSet} · R {result.versions.rules} · C {result.versions.content}
@@ -64,9 +70,10 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
 }) => {
     const [stage, setStage] = useState<ReceiptPrinterStage>('processing');
     const [qrCode, setQrCode] = useState('');
+    const [snapshot, setSnapshot] = useState('');
     const [status, setStatus] = useState('');
     const captureRef = useRef<HTMLDivElement>(null);
-    const publicUrl = `${window.location.origin}${publicPath}`;
+    const coarsePointer = useRef(isCoarsePointer());
     const slug = publicPath.match(/^\/r\/([^/]+)$/)?.[1] || '';
 
     const recordShare = (action: string) => {
@@ -93,22 +100,27 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
     }, []);
 
     useEffect(() => {
-        QRCode.toDataURL(publicUrl, { margin: 1, width: 180 })
+        QRCode.toDataURL(`${window.location.origin}${HOME_URL}`, { margin: 1, width: 180 })
             .then(setQrCode)
-            .catch(() => setStatus('二维码生成失败，请使用复制链接。'));
-    }, [publicUrl]);
+            .catch(() => setStatus('二维码生成失败。'));
+    }, []);
 
-    const copyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(publicUrl);
-            setStatus('公开链接已复制。');
-            recordShare('link_copy');
-        } catch {
-            setStatus('复制失败，请从地址栏复制链接。');
+    useEffect(() => {
+        if (stage !== 'complete' || !coarsePointer.current || !captureRef.current) return;
+        toPng(captureRef.current, { cacheBust: true, pixelRatio: 2 })
+            .then(setSnapshot)
+            .catch(() => undefined);
+    }, [stage]);
+
+    const saveReceipt = async () => {
+        if (coarsePointer.current) {
+            setStatus(
+                snapshot
+                    ? '长按小票图片，即可保存到相册。'
+                    : '图片还在生成中，请稍后长按小票保存。',
+            );
+            return;
         }
-    };
-
-    const downloadReceipt = async () => {
         if (!captureRef.current) return;
         try {
             const dataUrl = await toPng(captureRef.current, {
@@ -123,30 +135,6 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
         }
     };
 
-    const share = async () => {
-        if (!navigator.share) {
-            await copyLink();
-            return;
-        }
-        try {
-            await navigator.share({
-                title: `${result.names.creator} × ${result.names.partner}｜${result.archetype.title}`,
-                text: result.teamQuote,
-                url: publicUrl,
-            });
-            recordShare('web_share');
-        } catch (error) {
-            if ((error as Error).name !== 'AbortError') setStatus('分享未完成。');
-        }
-    };
-
-    const downloadQr = () => {
-        if (!qrCode) return;
-        downloadUrl(qrCode, 'cofounder-result-qr.png');
-        setStatus('二维码 PNG 已保存。');
-        recordShare('qr_download');
-    };
-
     return (
         <div className="receipt-overlay" role="dialog" aria-modal="true" aria-label="Cofounder Identity Receipt">
             {onClose && (
@@ -157,8 +145,14 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
             <ReceiptPrinter.Root stage={stage}>
                 <ReceiptPrinter.Machine>
                     <ReceiptPrinter.Header>
-                        <strong>COFOUNDER / {new Date().getFullYear()}</strong>
-                        <span>PAIR OUTPUT</span>
+                        <span className="receipt-logo receipt-logo-header" aria-hidden="true" />
+                        <button className="tactile-button" type="button" onClick={saveReceipt}>
+                            <span className="tactile-button-base" aria-hidden="true" />
+                            <span className="tactile-button-face">
+                                <ShareNetwork aria-hidden="true" size={13} weight="fill" />
+                                Share
+                            </span>
+                        </button>
                     </ReceiptPrinter.Header>
                     <ReceiptPrinter.Screen>
                         <div className="receipt-screen-summary">
@@ -176,24 +170,21 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
                 </ReceiptPrinter.Machine>
                 <ReceiptPrinter.Output>
                     <div ref={captureRef}>
-                        <ReceiptPrinter.Paper aria-label="Cofounder Identity Receipt">
-                            <ReceiptContent result={result} qrCode={qrCode} />
-                        </ReceiptPrinter.Paper>
+                        {snapshot ? (
+                            <img
+                                className="receipt-snapshot"
+                                src={snapshot}
+                                alt="Cofounder Identity Receipt"
+                                draggable={false}
+                            />
+                        ) : (
+                            <ReceiptPrinter.Paper aria-label="Cofounder Identity Receipt">
+                                <ReceiptContent result={result} qrCode={qrCode} />
+                            </ReceiptPrinter.Paper>
+                        )}
                     </div>
                 </ReceiptPrinter.Output>
             </ReceiptPrinter.Root>
-            {stage === 'complete' && (
-                <div className="receipt-actions">
-                    <button type="button" onClick={share}><ShareNetwork /> 分享</button>
-                    <button type="button" onClick={copyLink}><LinkSimple /> 复制链接</button>
-                    <button type="button" onClick={downloadReceipt}><DownloadSimple /> 保存图片</button>
-                    {qrCode && (
-                        <button type="button" onClick={downloadQr}>
-                            <DownloadSimple /> 保存二维码
-                        </button>
-                    )}
-                </div>
-            )}
             {status && <p className="receipt-action-status" role="status">{status}</p>}
         </div>
     );
