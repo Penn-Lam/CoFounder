@@ -237,6 +237,12 @@
 
 .private-report {
     display: block;
+    font-family: Millennium, 'Microsoft YaHei', serif;
+}
+
+.private-report b,
+.private-report strong {
+    font-family: MillenniumBold, 'Microsoft YaHei', serif;
 }
 
 .private-report section,
