@@ -39,8 +39,8 @@ This document records the settled product decisions from the design interview. A
 - Never expose Sensitive Topics on a Public Identity Card by default.
 - In the registration privacy notice, explain that answers are combined into a shared interpretation while individual Sensitive Topic answers are not attributed.
 - Each Participant controls their own public display name, which may be a real name, nickname, or role name.
-- Keep public-name permission outside the Pair Test questions. Ask for Pair-specific permission in the first `PRINT / SHARE` flow and remember that choice for the Pair. Until a Participant explicitly enables their display name for a Public Result Page, use an anonymous role label for that Participant.
-- Do not create a Public Result Page automatically at Report Ready. Either Participant may explicitly generate one from `PRINT / SHARE`; the counterpart remains anonymous unless they separately permitted their display name for that Pair.
+- Public Result Pages show both Participants' display names by default; there is no per-Pair name-permission step. Account-level name changes and withdrawal remain available from Privacy & Data.
+- Do not create a Public Result Page automatically at Report Ready. Either Participant may explicitly generate one from the Identity Receipt strip in the report.
 - Opening an Invitation Link does not claim a place. The second Participant must authenticate, provide a display name, hold current required consent, and explicitly accept the challenge; the Invitation Link then becomes invalid.
 - Participants may revise answers before submission. Submitted answers are sealed and immutable; a future retest creates a new Pair Test rather than rewriting the old one.
 - Permit authorized operators to inspect ordinary-question answers for calibration and support under audited, least-privilege access.

@@ -23,7 +23,7 @@ const PublicResultPage: React.FC<{ slug: string }> = ({ slug }) => {
         return (
             <main className="public-result-unavailable">
                 <div className="unavailable-receipt">
-                    <strong>COFOUNDER RECEIPT</strong>
+                    <strong>COFOUNDER 双人小票</strong>
                     <h1>{emptyState === 'withdrawn' ? '这张结果已撤回' : '这张结果已不可用'}</h1>
                     <p>
                         {emptyState === 'withdrawn'
@@ -37,7 +37,7 @@ const PublicResultPage: React.FC<{ slug: string }> = ({ slug }) => {
     }
 
     if (!result) {
-        return <main className="public-result-loading" role="status">正在读取 Receipt…</main>;
+        return <main className="public-result-loading" role="status">正在读取小票…</main>;
     }
 
     return <ReceiptPrinterOverlay result={result} publicPath={`/r/${slug}`} />;

@@ -9,6 +9,11 @@ declare module '*.png' {
     export default source;
 }
 
+declare module '*.gif' {
+    const source: string;
+    export default source;
+}
+
 declare interface StyleSheetCSS {
     [key: string]: React.CSSProperties;
 }

@@ -37,7 +37,7 @@ const ReceiptContent: React.FC<{ result: PublicResult; qrCode: string }> = ({
 }) => (
     <>
         <img className="receipt-logo receipt-logo-paper" src={LOGO_URL} alt="" aria-hidden="true" />
-        <p className="receipt-kicker">COFOUNDER IDENTITY RECEIPT</p>
+        <p className="receipt-kicker">COFOUNDER RECEIPT</p>
         <h1>{result.names.creator} × {result.names.partner}</h1>
         <div className="receipt-rule" />
         <h2>{result.archetype.title}</h2>
@@ -128,7 +128,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
                 pixelRatio: 2,
             });
             downloadUrl(dataUrl, 'cofounder-identity-receipt.png');
-            setStatus('Receipt PNG 已保存。');
+            setStatus('小票图片已保存。');
             recordShare('receipt_download');
         } catch {
             setStatus('图片生成失败，请稍后重试。');
@@ -136,9 +136,9 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
     };
 
     return (
-        <div className="receipt-overlay" role="dialog" aria-modal="true" aria-label="Cofounder Identity Receipt">
+        <div className="receipt-overlay" role="dialog" aria-modal="true" aria-label="双人小票">
             {onClose && (
-                <button className="receipt-close" type="button" onClick={onClose} aria-label="关闭 Receipt">
+                <button className="receipt-close" type="button" onClick={onClose} aria-label="关闭小票">
                     <X size={18} weight="bold" />
                 </button>
             )}
@@ -163,8 +163,8 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
                             {stage === 'processing'
                                 ? '正在整理公开内容'
                                 : stage === 'printing'
-                                  ? '正在打印 Identity Receipt'
-                                  : 'Identity Receipt 已生成'}
+                                  ? '正在打印双人小票'
+                                  : '双人小票已生成'}
                         </ReceiptPrinter.Status>
                     </ReceiptPrinter.Screen>
                 </ReceiptPrinter.Machine>
@@ -174,11 +174,11 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
                             <img
                                 className="receipt-snapshot"
                                 src={snapshot}
-                                alt="Cofounder Identity Receipt"
+                                alt="双人小票"
                                 draggable={false}
                             />
                         ) : (
-                            <ReceiptPrinter.Paper aria-label="Cofounder Identity Receipt">
+                            <ReceiptPrinter.Paper aria-label="双人小票">
                                 <ReceiptContent result={result} qrCode={qrCode} />
                             </ReceiptPrinter.Paper>
                         )}

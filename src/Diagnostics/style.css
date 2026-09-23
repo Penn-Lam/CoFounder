@@ -955,10 +955,65 @@
     color: #ffffff;
 }
 
-.public-result-controls {
+.receipt-publish {
     margin-top: 24px;
+}
+
+.receipt-strip {
+    display: flex;
+    align-items: center;
+    padding: 12px;
     border: 2px solid var(--ink);
-    background: var(--tint-warm);
+    border-right-width: 0;
+    border-left-width: 0;
+    background: #ffffff;
+}
+
+.receipt-strip-printer {
+    width: 56px;
+    height: 48px;
+    flex: 0 0 auto;
+    margin-right: 24px;
+    image-rendering: pixelated;
+}
+
+.receipt-strip-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.receipt-strip-text h3 {
+    margin: 0 0 4px;
+}
+
+.receipt-strip-text p {
+    margin: 0;
+}
+
+.receipt-strip-note {
+    color: var(--ink-soft);
+    font-size: 12px;
+}
+
+.receipt-publish button.receipt-strip-link {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--info);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+}
+
+.receipt-publish button.receipt-strip-link:active {
+    box-shadow: none;
+}
+
+.receipt-publish button.receipt-strip-link:disabled {
+    color: var(--ink-soft);
+    cursor: default;
 }
 
 .privacy-data {
@@ -1090,37 +1145,6 @@
     font-family: Terminal, monospace;
     font-size: 24px;
     letter-spacing: 0.3em;
-}
-
-.public-result-live {
-    width: fit-content;
-    padding: 4px 8px;
-    background: var(--success);
-    color: #ffffff;
-    font-family: Terminal, monospace;
-}
-
-.public-permission-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    border: 1px dashed var(--ink);
-    background: var(--paper);
-}
-
-.public-permission-panel label {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    line-height: 1.4;
-}
-
-.public-permission-panel input {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 18px;
-    margin-top: 2px;
 }
 
 .public-result-actions {
@@ -1790,8 +1814,7 @@
     }
 
     .profile-options label,
-    .immutable-warning label,
-    .public-permission-panel label {
+    .immutable-warning label {
         min-height: 44px;
         align-items: center;
     }

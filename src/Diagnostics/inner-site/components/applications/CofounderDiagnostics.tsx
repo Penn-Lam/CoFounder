@@ -1,6 +1,7 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import Window from '../os/Window';
 import ContentReview from './ContentReview';
+import printer from '../../assets/printer.gif';
 import {
     PRINT_RECEIPT_EVENT,
     PrintReceiptDetail,
@@ -279,7 +280,6 @@ type ReportResponse = {
 };
 type PublicResultState = {
     published: boolean;
-    myNamePublic: boolean;
 };
 
 const PROFILE_LABELS: Record<string, string> = {
@@ -721,8 +721,6 @@ const PairTestFlow: React.FC<{
     const [copyStatus, setCopyStatus] = useState('');
     const [report, setReport] = useState<PrivateReport | null>(null);
     const [publicState, setPublicState] = useState<PublicResultState | null>(null);
-    const [showPublishControls, setShowPublishControls] = useState(false);
-    const [showMyName, setShowMyName] = useState(false);
     const [publicChallenge, setPublicChallenge] = useState<TurnstileChallenge | null>(null);
     const [publicTurnstileToken, setPublicTurnstileToken] = useState('');
     const headingRef = useRef<HTMLHeadingElement>(null);
@@ -794,10 +792,7 @@ const PairTestFlow: React.FC<{
     useEffect(() => {
         if (pair.reportStatus !== 'ready') return;
         request<PublicResultState>(`/api/pairs/${pair.pairId}/public-result`)
-            .then((state) => {
-                setPublicState(state);
-                setShowMyName(state.myNamePublic);
-            })
+            .then(setPublicState)
             .catch(() => undefined);
     }, [pair.pairId, pair.reportStatus]);
 
@@ -808,14 +803,12 @@ const PairTestFlow: React.FC<{
             const receipt = await request<PrintReceiptDetail>(
                 `/api/pairs/${pair.pairId}/public-result`,
                 {
-                    showMyName,
                     turnstileToken: publicTurnstileToken || undefined,
                 },
             );
             setPublicChallenge(null);
             setPublicTurnstileToken('');
-            setPublicState({ published: true, myNamePublic: showMyName });
-            setShowPublishControls(false);
+            setPublicState({ published: true });
             window.dispatchEvent(
                 new CustomEvent<PrintReceiptDetail>(PRINT_RECEIPT_EVENT, {
                     detail: receipt,
@@ -836,27 +829,6 @@ const PairTestFlow: React.FC<{
         }
     };
 
-    const updateNamePermission = async () => {
-        setBusy(true);
-        setError('');
-        try {
-            const state = await request<{ myNamePublic: boolean }>(
-                `/api/pairs/${pair.pairId}/public-name`,
-                { permitted: showMyName },
-                'PUT',
-            );
-            setPublicState((current) => ({
-                published: current?.published || false,
-                myNamePublic: state.myNamePublic,
-            }));
-            setShowPublishControls(false);
-        } catch (caught) {
-            setError(caught instanceof Error ? caught.message : '姓名权限更新失败。');
-        } finally {
-            setBusy(false);
-        }
-    };
-
     const unpublishResult = async () => {
         setBusy(true);
         setError('');
@@ -866,10 +838,7 @@ const PairTestFlow: React.FC<{
                 undefined,
                 'DELETE',
             );
-            setPublicState((current) => ({
-                published: false,
-                myNamePublic: current?.myNamePublic || false,
-            }));
+            setPublicState({ published: false });
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : '公开结果撤回失败。');
         } finally {
@@ -1102,12 +1071,8 @@ const PairTestFlow: React.FC<{
                             ))}
                         </ol>
                     </section>
-                    <section className="public-result-controls">
-                        <h2>Identity Receipt</h2>
-                        <p>
-                            公开 Receipt 只包含双方授权后的姓名、公开团队类型、三项安全特征和人工文案。
-                            不会包含答案、维度分、Mirror、红线或私人报告内容。
-                        </p>
+                    <section className="receipt-publish">
+                        <h2>双人小票</h2>
                         {publicChallenge && (
                             <TurnstilePrompt
                                 challenge={publicChallenge}
@@ -1115,82 +1080,64 @@ const PairTestFlow: React.FC<{
                                 onError={setError}
                             />
                         )}
-                        {publicState?.published && !showPublishControls ? (
-                            <>
-                                <p className="public-result-live">公开结果已发布</p>
-                                <p>
-                                    为避免保存可反查的公开 Token，系统不会恢复旧链接。
-                                    重新打印会生成新链接，并让旧链接立即失效。
-                                </p>
-                                <div className="public-result-actions">
-                                    <button type="button" disabled={busy} onClick={() => setShowPublishControls(true)}>
-                                        姓名权限
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="button-primary"
-                                        disabled={
-                                            busy ||
-                                            Boolean(
-                                                publicChallenge && !publicTurnstileToken,
-                                            )
-                                        }
-                                        onClick={publishResult}
-                                    >
-                                        打印 / 分享新链接
-                                    </button>
-                                    <button type="button" disabled={busy} onClick={unpublishResult}>
-                                        撤回公开结果
-                                    </button>
-                                </div>
-                            </>
-                        ) : showPublishControls ? (
-                            <div className="public-permission-panel">
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={showMyName}
-                                        onChange={(event) => setShowMyName(event.target.checked)}
-                                    />
-                                    <span>允许在这份测试的公开 Receipt 上显示我的账户显示名</span>
-                                </label>
-                                <p>未勾选时，你的一侧会显示匿名角色。另一位参与者独立决定自己的姓名权限。</p>
-                                <div className="public-result-actions">
-                                    <button type="button" disabled={busy} onClick={() => setShowPublishControls(false)}>
-                                        取消
-                                    </button>
-                                    {publicState?.published ? (
-                                        <button type="button" disabled={busy} onClick={updateNamePermission}>
-                                            保存姓名权限
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            className="button-primary"
-                                            disabled={
-                                                busy ||
-                                                Boolean(
-                                                    publicChallenge &&
-                                                        !publicTurnstileToken,
-                                                )
-                                            }
-                                            onClick={publishResult}
-                                        >
-                                            生成并打印 Receipt
-                                        </button>
-                                    )}
-                                </div>
+                        <div className="receipt-strip">
+                            <img className="receipt-strip-printer" src={printer} alt="" />
+                            <div className="receipt-strip-text">
+                                {publicState?.published ? (
+                                    <>
+                                        <h3>小票已公开</h3>
+                                        <p>
+                                            <button
+                                                type="button"
+                                                className="receipt-strip-link"
+                                                disabled={
+                                                    busy ||
+                                                    Boolean(
+                                                        publicChallenge &&
+                                                            !publicTurnstileToken,
+                                                    )
+                                                }
+                                                onClick={publishResult}
+                                            >
+                                                点这里重新打印并分享！
+                                            </button>
+                                        </p>
+                                        <p className="receipt-strip-note">
+                                            重新打印会生成新链接，旧链接立即失效。
+                                            {' · '}
+                                            <button
+                                                type="button"
+                                                className="receipt-strip-link"
+                                                disabled={busy}
+                                                onClick={unpublishResult}
+                                            >
+                                                撤回公开结果
+                                            </button>
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h3>想要一张双人小票？</h3>
+                                        <p>
+                                            <button
+                                                type="button"
+                                                className="receipt-strip-link"
+                                                disabled={
+                                                    busy ||
+                                                    Boolean(
+                                                        publicChallenge &&
+                                                            !publicTurnstileToken,
+                                                    )
+                                                }
+                                                onClick={publishResult}
+                                            >
+                                                点这里打印并分享！
+                                            </button>
+                                        </p>
+                                    </>
+                                )}
                             </div>
-                        ) : (
-                            <button
-                                type="button"
-                                className="button-primary"
-                                disabled={busy}
-                                onClick={() => setShowPublishControls(true)}
-                            >
-                                打印 / 分享
-                            </button>
-                        )}
+                        </div>
                         {error && <div className="pair-save-error" role="alert">{error}</div>}
                     </section>
                     <footer><p>{report.disclaimer.copy}</p></footer>
