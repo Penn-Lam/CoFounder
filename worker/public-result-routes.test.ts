@@ -13,7 +13,7 @@ const consents = Object.entries(CURRENT_CONSENTS).map(([type, version]) => ({
 
 const publicResult: PublicResult = {
     status: 'published',
-    names: { creator: '发起人', partner: 'Cofounder' },
+    names: { creator: 'Penn', partner: 'Jason' },
     archetype: {
         title: '望远镜与工具箱',
         englishTitle: 'Vision × Reality',
@@ -46,33 +46,19 @@ const harness = () => {
     let currentUser = { id: 'creator', name: 'Penn', email: 'penn@example.com' };
     let activeHash: string | null = null;
     const knownHashes = new Set<string>();
-    const permissions = new Map<string, boolean>();
     let published = false;
     let withdrawn = false;
     let publishCalls = 0;
     const analyticsEvents = new Map<string, string>();
 
-    const view = (): PublicResult => ({
-        ...publicResult,
-        names: {
-            creator: permissions.get('creator') ? 'Penn' : '发起人',
-            partner: permissions.get('partner') ? 'Jason' : 'Cofounder',
-        },
-    });
     const repository: PublicResultRepository = {
         async publish(input) {
             publishCalls += 1;
             activeHash = input.slugHash;
             knownHashes.add(input.slugHash);
-            permissions.set(input.userId, input.showMyName);
             published = true;
             withdrawn = false;
             return 'published';
-        },
-        async setNamePermission(input) {
-            if (!['creator', 'partner'].includes(input.userId)) return false;
-            permissions.set(input.userId, input.permitted);
-            return true;
         },
         async unpublish(_pairId, userId) {
             if (!['creator', 'partner'].includes(userId) || !published) return false;
@@ -82,16 +68,13 @@ const harness = () => {
         },
         async getPairState(_pairId, userId) {
             return ['creator', 'partner'].includes(userId)
-                ? {
-                      published,
-                      myNamePublic: permissions.get(userId) || false,
-                  }
+                ? { published }
                 : null;
         },
         async findBySlugHash(hash) {
             if (!knownHashes.has(hash)) return null;
             return published && hash === activeHash
-                ? { status: 'published', result: view() }
+                ? { status: 'published', result: publicResult }
                 : withdrawn && hash === activeHash
                   ? { status: 'withdrawn' }
                   : { status: 'unavailable' };
@@ -153,7 +136,7 @@ describe('privacy-safe public results', () => {
         const state = await (
             await test.request('/api/pairs/pair-1/public-result')
         ).json();
-        expect(state).toEqual({ published: false, myNamePublic: false });
+        expect(state).toEqual({ published: false });
         expect(test.publishCalls()).toBe(0);
     });
 
@@ -161,7 +144,7 @@ describe('privacy-safe public results', () => {
         const test = harness();
         const response = await test.request(
             '/api/pairs/pair-1/public-result',
-            json('POST', { showMyName: true }),
+            json('POST', {}),
         );
         const body = await response.json();
 
@@ -169,7 +152,7 @@ describe('privacy-safe public results', () => {
         expect(body.publicPath).toMatch(/^\/r\/[a-zA-Z0-9]{64}$/);
         expect(body.result.names).toEqual({
             creator: 'Penn',
-            partner: 'Cofounder',
+            partner: 'Jason',
         });
         const publicView = await (
             await test.request(`/api/public-results/${body.publicPath.slice(3)}`)
@@ -180,33 +163,12 @@ describe('privacy-safe public results', () => {
         );
     });
 
-    it('keeps each name anonymous until that Participant independently permits it', async () => {
-        const test = harness();
-        const created = await (
-            await test.request(
-                '/api/pairs/pair-1/public-result',
-                json('POST', { showMyName: true }),
-            )
-        ).json();
-        const slug = created.publicPath.slice(3);
-
-        test.loginAs('partner');
-        await test.request(
-            '/api/pairs/pair-1/public-name',
-            json('PUT', { permitted: true }),
-        );
-        const updated = await (
-            await test.request(`/api/public-results/${slug}`)
-        ).json();
-        expect(updated.names).toEqual({ creator: 'Penn', partner: 'Jason' });
-    });
-
     it('lets either Participant unpublish and leaves non-identifying metadata', async () => {
         const test = harness();
         const created = await (
             await test.request(
                 '/api/pairs/pair-1/public-result',
-                json('POST', { showMyName: true }),
+                json('POST', {}),
             )
         ).json();
         const slug = created.publicPath.slice(3);
@@ -236,7 +198,7 @@ describe('privacy-safe public results', () => {
         const created = await (
             await test.request(
                 '/api/pairs/pair-1/public-result',
-                json('POST', { showMyName: false }),
+                json('POST', {}),
             )
         ).json();
         const slug = created.publicPath.slice(3);
@@ -251,7 +213,7 @@ describe('privacy-safe public results', () => {
         ).toBe(400);
         expect(test.analyticsEvents().filter((type) => type === 'pair_shared')).toHaveLength(0);
 
-        for (const action of ['link_copy', 'qr_download', 'web_share']) {
+        for (const action of ['receipt_download', 'receipt_download']) {
             expect(
                 (
                     await test.request(

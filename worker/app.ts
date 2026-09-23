@@ -994,18 +994,14 @@ export const createApp = (services: AppServices = defaultServices) => {
             return context.json({ code: 'PUBLIC_RESULTS_UNAVAILABLE' }, 503);
         }
         const body = (await context.req.json().catch(() => null)) as {
-            showMyName?: unknown;
             turnstileToken?: unknown;
         } | null;
-        if (typeof body?.showMyName !== 'boolean') {
-            return context.json({ code: 'NAME_PERMISSION_REQUIRED' }, 400);
-        }
         const userId = context.get('account').session.user.id;
         const abuseResponse = await guardAbuse(
             context,
             PUBLIC_ABUSE_POLICIES,
             { public_user: userId },
-            body.turnstileToken,
+            body?.turnstileToken,
         );
         if (abuseResponse) return abuseResponse;
         const slug = `${services.id()}${services.id()}`.replaceAll('-', '');
@@ -1015,7 +1011,6 @@ export const createApp = (services: AppServices = defaultServices) => {
             pairId: context.req.param('pairId'),
             userId,
             slugHash,
-            showMyName: body.showMyName,
             publishedAt: services.now().toISOString(),
         });
         if (published === 'not_found') {
@@ -1043,27 +1038,6 @@ export const createApp = (services: AppServices = defaultServices) => {
             },
             201,
         );
-    });
-
-    app.put('/api/pairs/:pairId/public-name', async (context) => {
-        if (!services.publicResults) {
-            return context.json({ code: 'PUBLIC_RESULTS_UNAVAILABLE' }, 503);
-        }
-        const body = (await context.req.json().catch(() => null)) as {
-            permitted?: unknown;
-        } | null;
-        if (typeof body?.permitted !== 'boolean') {
-            return context.json({ code: 'INVALID_NAME_PERMISSION' }, 400);
-        }
-        const updated = await services.publicResults(context.env).setNamePermission({
-            pairId: context.req.param('pairId'),
-            userId: context.get('account').session.user.id,
-            permitted: body.permitted,
-            updatedAt: services.now().toISOString(),
-        });
-        return updated
-            ? context.json({ myNamePublic: body.permitted })
-            : context.json({ code: 'PAIR_NOT_FOUND' }, 404);
     });
 
     app.delete('/api/pairs/:pairId/public-result', async (context) => {
@@ -1114,12 +1088,7 @@ export const createApp = (services: AppServices = defaultServices) => {
         const body = (await context.req.json().catch(() => null)) as {
             action?: unknown;
         } | null;
-        const actions = new Set([
-            'web_share',
-            'link_copy',
-            'receipt_download',
-            'qr_download',
-        ]);
+        const actions = new Set(['receipt_download']);
         if (typeof body?.action !== 'string' || !actions.has(body.action)) {
             return context.json({ code: 'INVALID_SHARE_ACTION' }, 400);
         }
