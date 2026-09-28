@@ -35,6 +35,17 @@ type PublicResultRow = {
     report_json: string | null;
 };
 
+const legacyPairTypeIds: Record<string, string> = {
+    'archetype.vision-reality': 'archetype.two-stage-rocket',
+    'archetype.dual-big-outcome': 'archetype.double-helix',
+    'archetype.dual-product': 'archetype.chopsticks',
+    'archetype.cashflow-operators': 'archetype.sailboat',
+    'archetype.research-lab': 'archetype.gears',
+    'archetype.narrative-market-fit': 'archetype.sushi-roll',
+    'archetype.complementary-monsters': 'archetype.gears',
+    'archetype.complementary-builders': 'archetype.double-helix',
+};
+
 const publicResultFromRow = (row: PublicResultRow): PublicResultLookup => {
     if (row.unpublished_at) return { status: 'withdrawn' };
     if (
@@ -44,9 +55,14 @@ const publicResultFromRow = (row: PublicResultRow): PublicResultLookup => {
     ) {
         return { status: 'unavailable' };
     }
-    const report = JSON.parse(row.report_json) as PrivateReportFacts;
+    const report = JSON.parse(row.report_json) as PrivateReportFacts & {
+        portrait: PrivateReportFacts['portrait'] & { archetypeId?: string };
+    };
+    const pairTypeId =
+        report.portrait.pairTypeId ||
+        legacyPairTypeIds[report.portrait.archetypeId || ''];
     const archetype = contentLibraryV1.publicArchetypes.find(
-        ({ id }) => id === report.portrait.archetypeId,
+        ({ id }) => id === pairTypeId,
     );
     if (!archetype) return { status: 'unavailable' };
     const cta = contentLibraryV1.commonCopy.find(
@@ -61,13 +77,32 @@ const publicResultFromRow = (row: PublicResultRow): PublicResultLookup => {
                 creator: row.creator_name || '发起人',
                 partner: row.partner_name || 'Cofounder',
             },
-            archetype: {
-                title: archetype.title,
-                englishTitle: archetype.englishTitle,
-                explanation: archetype.explanation,
+            pairType: {
+                title: report.portrait.pairTypeId
+                    ? report.portrait.title
+                    : archetype.title,
+                englishTitle: report.portrait.pairTypeId
+                    ? report.portrait.englishTitle
+                    : archetype.englishTitle,
+                tagline: report.portrait.tagline || archetype.tagline,
+                explanation: report.portrait.pairTypeId
+                    ? report.portrait.copy
+                    : archetype.explanation,
+                image:
+                    report.portrait.story?.receiptImage ||
+                    archetype.story.receiptImage,
             },
-            teamQuote: archetype.teamQuotes[0],
-            safeTraits: archetype.safeTraits.slice(0, 3),
+            modifiers:
+                report.portrait.modifiers?.map(({ label }) => label) || [
+                    '同一座山',
+                    '吵完还能开会',
+                ],
+            legendaryTrait: report.portrait.legendaryTrait
+                ? {
+                      title: report.portrait.legendaryTrait.title,
+                      copy: report.portrait.legendaryTrait.copy,
+                  }
+                : null,
             date: row.published_at.slice(0, 10),
             versions: report.versions,
             cta: cta.copy,

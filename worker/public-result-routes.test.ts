@@ -14,13 +14,15 @@ const consents = Object.entries(CURRENT_CONSENTS).map(([type, version]) => ({
 const publicResult: PublicResult = {
     status: 'published',
     names: { creator: 'Penn', partner: 'Jason' },
-    archetype: {
-        title: '望远镜与工具箱',
-        englishTitle: 'Vision × Reality',
-        explanation: '一人看远方，一人铺道路。',
+    pairType: {
+        title: '两级火箭型合伙人',
+        englishTitle: 'Two-Stage Rocket',
+        tagline: '一个负责十年以后，一个负责下周三。',
+        explanation: '一方持续拉高终局，另一方把终局拆成下一步。',
+        image: '/images/pair-types/craft-dot.webp',
     },
-    teamQuote: '先看见未来，再把今天做完。',
-    safeTraits: ['方向感强', '落地有序', '互相校准'],
+    modifiers: ['双大结果', '一个讲故事，一个交付'],
+    legendaryTrait: null,
     date: '2026-09-20',
     versions: {
         questionSet: 'questions-v1',
@@ -160,6 +162,9 @@ describe('privacy-safe public results', () => {
         expect(publicView).toEqual(body.result);
         expect(JSON.stringify(publicView)).not.toMatch(
             /dimension|mirror|privatePattern|conflictFlag|sensitive|answer/i,
+        );
+        expect(JSON.stringify(publicView)).not.toMatch(
+            /史蒂夫|沃兹尼亚克|三项天赋/,
         );
     });
 

@@ -33,6 +33,12 @@ const featureVector: ClassificationRequest['featureVector'] = {
     },
     ordinary_conflict_flag_codes: [],
     narrative_tag_codes: [],
+    relationship_axes: {
+        direction: { alignment: 80, mode: 'in_sync' },
+        capability: { complementarity: 70, mode: 'complementary' },
+        power: { clarity: 90, mode: 'single_core' },
+        pace: { participantA: 75, participantB: 40, contrast: 35, mode: 'mixed' },
+    },
 };
 
 const set = (first: string, second: string): ChoiceCandidateSet => ({
@@ -46,9 +52,11 @@ const request = (
     featureVector,
     choices: {
         publicArchetype: set(
-            'archetype.complementary-builders',
-            'archetype.vision-reality',
+            'archetype.chopsticks',
+            'archetype.split-pot',
         ),
+        identityModifier: set('modifier.same-mountain', 'modifier.digital-twin'),
+        dynamicModifier: set('modifier.fight-and-return', 'modifier.high-pressure-pair'),
         strongestAlignment: set('ambition', 'product'),
         valuableComplement: set('operating', 'external'),
         topRisk: set('dimension.risk', 'dimension.governance'),
@@ -73,6 +81,8 @@ const request = (
 
 const setsFor = (input: ClassificationRequest) => ({
     public_archetype: input.choices.publicArchetype,
+    identity_modifier: input.choices.identityModifier,
+    dynamic_modifier: input.choices.dynamicModifier,
     strongest_alignment: input.choices.strongestAlignment,
     valuable_complement: input.choices.valuableComplement,
     top_risk: input.choices.topRisk,
@@ -133,7 +143,7 @@ describe('bounded Jev classifier', () => {
                 endpoint = String(url);
                 sent = JSON.parse(String(init?.body));
                 return responseFor(input, {
-                    public_archetype: 'archetype.vision-reality',
+                    public_archetype: 'archetype.split-pot',
                 });
             }) as typeof fetch,
         });
@@ -146,19 +156,19 @@ describe('bounded Jev classifier', () => {
             requestedModel: JEV_MODEL,
             responseModel: 'jev-1.13.0',
             decisionSchemaVersion: JEV_DECISION_SCHEMA_VERSION,
-            publicArchetypeId: 'archetype.vision-reality',
+            publicArchetypeId: 'archetype.split-pot',
         });
         expect(result.promptIds).toHaveLength(5);
         expect(new Set(result.promptIds).size).toBe(5);
         expect(result.selectedContentIds).toContain(result.mirrorMisreadId);
-        expect(result.selectedContentIds).toHaveLength(8);
+        expect(result.selectedContentIds).toHaveLength(10);
         expect(endpoint).toBe('https://api.typesafe.ai/v1/systemone');
         expect(sent.model).toBe(JEV_MODEL);
         expect(sent.state).toEqual({
             classification_schema_version: JEV_DECISION_SCHEMA_VERSION,
             pair_features: featureVector,
         });
-        expect(Object.keys(sent.questions)).toHaveLength(11);
+        expect(Object.keys(sent.questions)).toHaveLength(13);
         expect(JSON.stringify(sent.state)).not.toMatch(
             /email|user_id|pair_id|display_name|raw_answer|red_line|sensitive/i,
         );
@@ -202,7 +212,7 @@ describe('bounded Jev classifier', () => {
             fetcher: (async () =>
                 responseFor(
                     input,
-                    { public_archetype: 'archetype.vision-reality' },
+                    { public_archetype: 'archetype.split-pot' },
                     {
                         mirror_misread:
                             DEFAULT_JEV_CONFIDENCE_THRESHOLD - 0.01,
@@ -215,7 +225,7 @@ describe('bounded Jev classifier', () => {
         expect(result).toMatchObject({
             source: 'mixed',
             provider: 'typesafe',
-            publicArchetypeId: 'archetype.vision-reality',
+            publicArchetypeId: 'archetype.split-pot',
             mirrorMisreadId: 'mirror.accurate-model',
             fallbackReason: 'below_confidence_threshold:mirror_misread',
         });
@@ -289,7 +299,7 @@ describe('bounded Jev classifier', () => {
         );
     });
 
-    it('keeps public archetype choices approved for all 20 mocks', async () => {
+    it('keeps Pair Type and modifier choices bounded for all 20 mocks', async () => {
         const rows = readFileSync(
             'docs/calibration/mock-pairs-v0.jsonl',
             'utf8',
@@ -321,23 +331,28 @@ describe('bounded Jev classifier', () => {
                 ({ criteria }) => Object.keys(criteria),
             );
             expect(new Set(promptCandidateIds).size).toBe(promptCandidateIds.length);
-            const approved = [
-                row.approved_labels.preferred_public_archetype,
-                ...row.approved_labels.acceptable_public_archetypes,
-            ].map((id: string) => `archetype.${id}`);
-            const choice = approved.find((id: string) =>
-                Object.hasOwn(input.choices.publicArchetype.criteria, id),
-            );
-            expect(choice).toBeDefined();
+            const choice = Object.keys(input.choices.publicArchetype.criteria)[0];
+            const identityModifier = Object.keys(input.choices.identityModifier.criteria)[0];
+            const dynamicModifier = Object.keys(input.choices.dynamicModifier.criteria)[0];
             const classifier = createJevClassifier({
                 jevApiKey: 'test-key',
                 fetcher: (async () =>
-                    responseFor(input, { public_archetype: choice })) as typeof fetch,
+                    responseFor(input, {
+                        public_archetype: choice,
+                        identity_modifier: identityModifier,
+                        dynamic_modifier: dynamicModifier,
+                    })) as typeof fetch,
             });
 
             const result = await classifier.classify(input);
 
-            expect(approved).toContain(result.publicArchetypeId);
+            expect(Object.keys(input.choices.publicArchetype.criteria)).toContain(
+                result.publicArchetypeId,
+            );
+            expect(result.modifierIds).toEqual([
+                identityModifier,
+                dynamicModifier,
+            ]);
             expect(result.promptIds).toHaveLength(5);
             expect(new Set(result.promptIds).size).toBe(5);
         }

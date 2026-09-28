@@ -231,7 +231,20 @@ type TestQuestion = Question & {
     answerKey: string;
 };
 type PrivateReport = {
-    portrait: { title: string; englishTitle: string; copy: string };
+    portrait: {
+        title: string;
+        englishTitle: string;
+        tagline?: string;
+        copy: string;
+        story?: {
+            title: string;
+            paragraphs: string[];
+            image: string;
+            receiptImage: string;
+        };
+        modifiers?: Array<{ id: string; label: string }>;
+        legendaryTrait?: { id: string; title: string; copy: string } | null;
+    };
     alignment: { dimension: string; title: string; copy: string };
     complement: { dimension: string; title: string; copy: string };
     sections: Record<
@@ -979,13 +992,44 @@ const PairTestFlow: React.FC<{
                 : report.mirror.aPredictsB;
             return (
                 <article className="private-report" aria-live="polite">
-                    <header>
-                        <p className="report-ready-notice">报告已就绪</p>
+                    {report.portrait.story && (
+                        <figure className="report-story">
+                            <img
+                                src={report.portrait.story.image}
+                                alt={report.portrait.story.title}
+                            />
+                            <figcaption>
+                                <strong>{report.portrait.story.title}</strong>
+                                {report.portrait.story.paragraphs.map((paragraph) => (
+                                    <p key={paragraph}>{paragraph}</p>
+                                ))}
+                            </figcaption>
+                        </figure>
+                    )}
+                    <header className="pair-identity">
                         <h1>{report.portrait.title}</h1>
                         <p className="report-secondary">{report.portrait.englishTitle}</p>
+                        {report.portrait.tagline && (
+                            <h2>{report.portrait.tagline}</h2>
+                        )}
                         <p>{report.portrait.copy}</p>
+                        {report.portrait.modifiers && (
+                            <div className="pair-modifiers" aria-label="个性标签">
+                                {report.portrait.modifiers.map((modifier) => (
+                                    <span key={modifier.id}>{modifier.label}</span>
+                                ))}
+                            </div>
+                        )}
+                        {report.portrait.legendaryTrait && (
+                            <aside className="legendary-trait">
+                                <strong>{report.portrait.legendaryTrait.title}</strong>
+                                <p>{report.portrait.legendaryTrait.copy}</p>
+                            </aside>
+                        )}
                     </header>
-                    <div className="report-summary-grid">
+                    <details className="report-details">
+                        <summary>看看为什么</summary>
+                        <div className="report-summary-grid">
                         <section>
                             <h2>{report.alignment.title}</h2>
                             <b>{report.dimensions.find(({ dimension }) => dimension === report.alignment.dimension)?.label}</b>
@@ -1004,8 +1048,8 @@ const PairTestFlow: React.FC<{
                             <p>{report.privatePattern.copy}</p>
                             <p>{report.privatePattern.action}</p>
                         </section>
-                    </div>
-                    <section>
+                        </div>
+                        <section>
                         <h2>{report.sections.dimensions.title}</h2>
                         <p>{report.sections.dimensions.copy}</p>
                         <div className="report-dimensions">
@@ -1019,8 +1063,8 @@ const PairTestFlow: React.FC<{
                                 </article>
                             ))}
                         </div>
-                    </section>
-                    <section>
+                        </section>
+                        <section>
                         <h2>{report.sections.mirror.title}</h2>
                         <p>{report.sections.mirror.copy}</p>
                         <h3>{report.mirror.interpretation.title}</h3>
@@ -1035,8 +1079,8 @@ const PairTestFlow: React.FC<{
                                 <p>准确 {partnerMirror.exact} · 接近 {partnerMirror.near} · 相反 {partnerMirror.opposite}</p>
                             </article>
                         </div>
-                    </section>
-                    <section>
+                        </section>
+                        <section>
                         <h2>{report.sections.flags.title}</h2>
                         <p>{report.sections.flags.copy}</p>
                         {report.conflictFlags.length === 0 ? (
@@ -1061,8 +1105,8 @@ const PairTestFlow: React.FC<{
                                 </li>
                             ))}
                         </ul>
-                    </section>
-                    <section>
+                        </section>
+                        <section>
                         <h2>{report.sections.prompts.title}</h2>
                         <p>{report.sections.prompts.copy}</p>
                         <ol>
@@ -1070,7 +1114,8 @@ const PairTestFlow: React.FC<{
                                 <li key={prompt.id}>{prompt.copy}</li>
                             ))}
                         </ol>
-                    </section>
+                        </section>
+                    </details>
                     <section className="receipt-publish">
                         <h2>双人小票</h2>
                         {publicChallenge && (

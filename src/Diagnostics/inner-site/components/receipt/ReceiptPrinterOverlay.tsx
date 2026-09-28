@@ -40,18 +40,22 @@ const ReceiptContent: React.FC<{ result: PublicResult; qrCode: string }> = ({
         <p className="receipt-kicker">COFOUNDER RECEIPT</p>
         <h1>{result.names.creator} × {result.names.partner}</h1>
         <div className="receipt-rule" />
-        <h2>{result.archetype.title}</h2>
-        <p className="receipt-english-title">{result.archetype.englishTitle}</p>
-        <p>{result.archetype.explanation}</p>
-        <blockquote>{result.teamQuote}</blockquote>
-        <dl className="receipt-traits">
-            {result.safeTraits.map((trait, index) => (
-                <div key={trait}>
-                    <dt>0{index + 1}</dt>
-                    <dd>{trait}</dd>
-                </div>
+        <img className="receipt-pair-image" src={result.pairType.image} alt="" aria-hidden="true" />
+        <h2>{result.pairType.title}</h2>
+        <p className="receipt-english-title">{result.pairType.englishTitle}</p>
+        <blockquote>{result.pairType.tagline}</blockquote>
+        <p>{result.pairType.explanation}</p>
+        <div className="receipt-modifiers" aria-label="个性标签">
+            {result.modifiers.map((modifier) => (
+                <span key={modifier}>{modifier}</span>
             ))}
-        </dl>
+        </div>
+        {result.legendaryTrait && (
+            <div className="receipt-legendary-trait">
+                <strong>{result.legendaryTrait.title}</strong>
+                <p>{result.legendaryTrait.copy}</p>
+            </div>
+        )}
         <div className="receipt-rule" />
         <p className="receipt-cta">{result.cta}</p>
         {qrCode && <img className="receipt-qr" src={qrCode} alt="Cofounder 首页二维码" />}
@@ -156,7 +160,7 @@ const ReceiptPrinterOverlay: React.FC<ReceiptPrinterOverlayProps> = ({
                     </ReceiptPrinter.Header>
                     <ReceiptPrinter.Screen>
                         <div className="receipt-screen-summary">
-                            <span>{result.archetype.englishTitle}</span>
+                            <span>{result.pairType.englishTitle}</span>
                             <b>{result.names.creator} × {result.names.partner}</b>
                         </div>
                         <ReceiptPrinter.Status>

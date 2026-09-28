@@ -1,7 +1,9 @@
+import type { RelationshipAxes } from './rules';
+
 export const JEV_MODEL = 'jev-1.13.0';
 export const OPENROUTER_JEV_MODEL = 'typesafe/jev-1.13';
 export const DEFAULT_JEV_CONFIDENCE_THRESHOLD = 0.3;
-export const JEV_DECISION_SCHEMA_VERSION = 'cofounder-jev-decision-v2';
+export const JEV_DECISION_SCHEMA_VERSION = 'cofounder-jev-decision-v3';
 
 type JevProvider = 'typesafe' | 'openrouter';
 
@@ -19,6 +21,7 @@ export type PairFeatureVector = {
     >;
     ordinary_conflict_flag_codes: string[];
     narrative_tag_codes: string[];
+    relationship_axes: RelationshipAxes;
 };
 
 export type ChoiceCandidateSet = {
@@ -30,6 +33,8 @@ export type ClassificationRequest = {
     featureVector: PairFeatureVector;
     choices: {
         publicArchetype: ChoiceCandidateSet;
+        identityModifier: ChoiceCandidateSet;
+        dynamicModifier: ChoiceCandidateSet;
         strongestAlignment: ChoiceCandidateSet;
         valuableComplement: ChoiceCandidateSet;
         topRisk: ChoiceCandidateSet;
@@ -59,6 +64,7 @@ export type ClassificationProvenance = {
 
 export type ClassificationDecision = ClassificationProvenance & {
     publicArchetypeId: string;
+    modifierIds: [string, string];
     alignmentDimension: string;
     complementDimension: string;
     topRiskId: string;
@@ -75,7 +81,11 @@ export class TransientClassificationError extends Error {}
 
 const questionInstructions = {
     public_archetype:
-        'Select the most representative share-safe Pair identity. Do not infer sensitive answers.',
+        'Select the most representative Pair Type from the four relationship axes and approved candidates. Do not infer sensitive answers.',
+    identity_modifier:
+        'Select the most distinctive share-safe identity modifier for this Pair.',
+    dynamic_modifier:
+        'Select the most distinctive share-safe interaction modifier for this Pair.',
     strongest_alignment:
         'Select the alignment that is most meaningful to this Pair, not merely the numerically highest tie.',
     valuable_complement:
@@ -102,6 +112,8 @@ type QuestionId = keyof typeof questionInstructions;
 
 const questionSets = (input: ClassificationRequest) => ({
     public_archetype: input.choices.publicArchetype,
+    identity_modifier: input.choices.identityModifier,
+    dynamic_modifier: input.choices.dynamicModifier,
     strongest_alignment: input.choices.strongestAlignment,
     valuable_complement: input.choices.valuableComplement,
     top_risk: input.choices.topRisk,
@@ -196,6 +208,8 @@ const decisionFromSelections = (input: {
     ] as ClassificationDecision['promptIds'];
     const selectedContentIds = [
         input.selections.public_archetype,
+        input.selections.identity_modifier,
+        input.selections.dynamic_modifier,
         input.selections.mirror_misread,
         input.selections.private_risk_pattern,
         ...promptIds,
@@ -211,6 +225,10 @@ const decisionFromSelections = (input: {
         selectedContentIds,
         fallbackReason: input.fallbackReason,
         publicArchetypeId: input.selections.public_archetype,
+        modifierIds: [
+            input.selections.identity_modifier,
+            input.selections.dynamic_modifier,
+        ],
         alignmentDimension: input.selections.strongest_alignment,
         complementDimension: input.selections.valuable_complement,
         topRiskId: input.selections.top_risk,

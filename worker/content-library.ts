@@ -30,6 +30,8 @@ const REQUIRED_COMMON_COPY_IDS = [
 
 const itemCollections = (library: typeof contentLibraryV1) => [
     ...library.publicArchetypes,
+    ...library.modifiers,
+    ...library.legendaryTraits,
     ...library.privateRiskPatterns,
     ...library.mirrorMisreads,
     library.reportVocabulary,
@@ -56,6 +58,10 @@ export const validateContentLibrary = (
     check(
         !/TODO|TBD|placeholder|lorem|待定|占位/i.test(JSON.stringify(library)),
         'Library contains placeholder copy',
+    );
+    check(
+        !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(JSON.stringify(library)),
+        'Library contains emoji',
     );
 
     for (const item of items) {
@@ -109,14 +115,26 @@ export const validateContentLibrary = (
             `${archetype.id} has no explanation`,
         );
         check(
-            archetype.safeTraits.length >= 3,
-            `${archetype.id} needs three traits`,
+            Boolean(archetype.tagline),
+            `${archetype.id} has no tagline`,
         );
         check(
-            archetype.teamQuotes.length >= 2,
-            `${archetype.id} needs quote variants`,
+            archetype.story.paragraphs.length >= 2 &&
+                Boolean(archetype.story.image) &&
+                Boolean(archetype.story.receiptImage),
+            `${archetype.id} needs a story and both image variants`,
         );
     }
+    check(library.modifiers.length >= 10, 'At least ten modifiers are required');
+    check(
+        library.modifiers.filter(({ group }) => group === 'identity').length >= 5 &&
+            library.modifiers.filter(({ group }) => group === 'dynamic').length >= 5,
+        'Both modifier groups need at least five choices',
+    );
+    check(
+        library.legendaryTraits.some(({ id }) => id === 'trait.century-company'),
+        'Century Company legendary trait is required',
+    );
 
     const checkRequiredIds = (
         required: readonly string[],
@@ -204,7 +222,7 @@ export const validateContentLibrary = (
     }
 
     const references = [
-        library.conservativeResult.archetypeId,
+        library.conservativeResult.pairTypeId,
         library.conservativeResult.riskPatternId,
         ...library.conservativeResult.reportModuleIds,
         ...library.conservativeResult.promptIds,

@@ -209,12 +209,12 @@ const escapeHtml = (value: string) =>
 
 const publicMetadata = (result: PublicResult | null, withdrawn: boolean) => {
     const title = result
-        ? `${result.names.creator} × ${result.names.partner}｜${result.archetype.title}`
+        ? `${result.names.creator} × ${result.names.partner}｜${result.pairType.title}`
         : withdrawn
           ? 'Cofounder｜Withdrawn Result'
           : 'Cofounder｜结果不可用';
     const description = result
-        ? `${result.archetype.englishTitle}。${result.teamQuote}`
+        ? `${result.pairType.englishTitle}。${result.pairType.tagline}`
         : withdrawn
           ? '这份 Cofounder 公开结果已由参与者撤回。'
           : '这份 Cofounder 公开结果不可用。';

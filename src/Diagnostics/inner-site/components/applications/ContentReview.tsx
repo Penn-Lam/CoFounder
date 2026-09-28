@@ -6,10 +6,17 @@ type ReviewLibrary = {
         id: string;
         title: string;
         englishTitle: string;
+        tagline: string;
         explanation: string;
-        safeTraits: readonly string[];
-        teamQuotes: readonly string[];
+        story: {
+            title: string;
+            paragraphs: readonly string[];
+            image: string;
+            receiptImage: string;
+        };
     }>;
+    modifiers: Array<{ id: string; group: string; label: string }>;
+    legendaryTraits: Array<{ id: string; title: string; copy: string }>;
     privateRiskPatterns: Array<{
         id: string;
         title: string;
@@ -23,7 +30,7 @@ type ReviewLibrary = {
     commonCopy: Array<{ id: string; title: string; copy: string }>;
     conservativeResult: {
         id: string;
-        archetypeId: string;
+        pairTypeId: string;
         riskPatternId: string;
     };
 };
@@ -72,15 +79,32 @@ const ContentReview: React.FC = () => {
                             <p className="review-secondary">
                                 {item.englishTitle}
                             </p>
+                            <blockquote>{item.tagline}</blockquote>
                             <p>{item.explanation}</p>
-                            <ul>
-                                {item.safeTraits.map((trait) => (
-                                    <li key={trait}>{trait}</li>
-                                ))}
-                            </ul>
-                            {item.teamQuotes.map((quote) => (
-                                <blockquote key={quote}>{quote}</blockquote>
+                            <img src={item.story.image} alt={item.story.title} />
+                            <strong>{item.story.title}</strong>
+                            {item.story.paragraphs.map((paragraph) => (
+                                <p key={paragraph}>{paragraph}</p>
                             ))}
+                        </article>
+                    ))}
+                </div>
+            </section>
+            <section>
+                <h2>Modifiers and Legendary Traits</h2>
+                <div className="review-grid">
+                    {library.modifiers.map((item) => (
+                        <article className="review-card" key={item.id}>
+                            <code>{item.id}</code>
+                            <h3>{item.label}</h3>
+                            <p>{item.group}</p>
+                        </article>
+                    ))}
+                    {library.legendaryTraits.map((item) => (
+                        <article className="review-card" key={item.id}>
+                            <code>{item.id}</code>
+                            <h3>{item.title}</h3>
+                            <p>{item.copy}</p>
                         </article>
                     ))}
                 </div>
@@ -132,7 +156,7 @@ const ContentReview: React.FC = () => {
                 <h2>Conservative Report</h2>
                 <article className="review-card">
                     <code>{library.conservativeResult.id}</code>
-                    <p>PUBLIC: {library.conservativeResult.archetypeId}</p>
+                    <p>PAIR TYPE: {library.conservativeResult.pairTypeId}</p>
                     <p>PRIVATE: {library.conservativeResult.riskPatternId}</p>
                 </article>
                 <div className="review-grid">

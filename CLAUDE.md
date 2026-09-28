@@ -22,6 +22,7 @@ wrangler.jsonc - Worker Static Assets、DB D1 与 MEDIA R2 绑定；开发、生
 .dev.vars.example - Better Auth 与 Resend 所需变量模板；真实值只放未跟踪的 `.dev.vars` 或 Worker secrets
 src/tsconfig.json / worker/tsconfig.json - 前端与 Worker 分开做严格类型检查；@types/node 钉在 18.x
 src/Diagnostics/inner-site/UPSTREAM.md - Henry `portfolio-inner-site` 的复用来源与未获许可前禁止发布的约束
+worker/content-library-v1.ts / worker/rules.ts - 8 种 Pair Type、关系轴、个性标签、稀有 Trait 与人工结果文案；配图位于 `static/images/pair-types/`
 </config>
 
 ## Agent skills

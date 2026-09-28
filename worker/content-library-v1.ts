@@ -1,6 +1,6 @@
 import type { Dimension } from './rules';
 
-export const CONTENT_LIBRARY_VERSION = 'cofounder-content-v2';
+export const CONTENT_LIBRARY_VERSION = 'cofounder-content-v3';
 
 export type ApprovedContent = {
     id: string;
@@ -21,123 +21,177 @@ export const contentLibraryV1 = {
     approval,
     publicArchetypes: [
         {
-            id: 'archetype.vision-reality',
-            key: 'vision-reality',
-            title: '望远镜与工具箱',
-            englishTitle: 'Vision × Reality',
+            id: 'archetype.chopsticks',
+            key: 'chopsticks',
+            title: '筷子型合伙人',
+            englishTitle: 'Chopsticks Pair',
+            tagline: '看起来是两个人，下手的时候基本是一个人。',
             explanation:
-                '一人把远方说清楚，一人把脚下铺扎实。你们的优势不是谁说服谁，而是让野心持续接受现实检验。',
-            safeTraits: ['方向感强', '落地有序', '互相校准'],
-            teamQuotes: [
-                '先看见未来，再把今天做完。',
-                '一个抬头找路，一个低头铺路。',
-                '愿景负责拉远，现实负责抵达。',
-            ],
+                '你们对方向、判断节奏和彼此意图有很高的同步率。真正的优势不是答案总相同，而是很少需要重新解释为什么。',
+            story: {
+                title: '沃伦·巴菲特与查理·芒格',
+                paragraphs: [
+                    '1959 年夏天，29 岁的沃伦·巴菲特在奥马哈的一场家庭晚餐上见到了查理·芒格。那晚的餐桌很快变成了两台精密大脑的高速共振。',
+                    '几十年间，他们用完全互补的性格，把两套顶尖的判断系统磨合成了同一种无需多言的思维语言。',
+                ],
+                image: '/images/pair-types/compounding-original.webp',
+                receiptImage: '/images/pair-types/compounding-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.dual-big-outcome',
-            key: 'dual-big-outcome',
-            title: '双引擎造浪者',
-            englishTitle: 'Category Builders',
+            id: 'archetype.split-pot',
+            key: 'split-pot',
+            title: '鸳鸯锅型合伙人',
+            englishTitle: 'Split Pot Pair',
+            tagline: '一个总觉得窗口要关了，一个总觉得钱要烧完了。',
             explanation:
-                '你们都愿意为更大的结果投入长期筹码。共同的上限感很强，真正的功课是把速度、代价和阶段目标讲清楚。',
-            safeTraits: ['目标远大', '推进有力', '长期投入'],
-            teamQuotes: [
-                '不是追浪，是一起造浪。',
-                '两台引擎，先对齐航向。',
-                '把大目标拆成今天的第一步。',
-            ],
+                '你们对公司最后要去哪几乎没有分歧，但对现在该不该踩油门天然站在两边。一个负责不错过机会，一个负责让公司活着看到机会兑现。',
+            story: {
+                title: '里德·哈斯廷斯与马克·兰多夫',
+                paragraphs: [
+                    'Netflix 诞生前，马克·兰多夫不断抛出创业设想，里德·哈斯廷斯则用逻辑、单位经济模型和技术可行性逐个设卡。',
+                    '一个充满激情的直觉主义者负责发起进攻，一个极度理性的工程师负责防守，直到那个能经受双重检验的点子幸存下来。',
+                ],
+                image: '/images/pair-types/experiment-original.webp',
+                receiptImage: '/images/pair-types/experiment-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.dual-product',
-            key: 'dual-product',
-            title: '双核产品组',
-            englishTitle: 'Product Twins',
+            id: 'archetype.two-stage-rocket',
+            key: 'two-stage-rocket',
+            title: '两级火箭型合伙人',
+            englishTitle: 'Two-Stage Rocket',
+            tagline: '一个负责十年以后，一个负责下周三。',
             explanation:
-                '你们都习惯从用户、产品和证据出发。共同语言很多，但也要提前约定意见相同时谁执行、意见不同时谁收口。',
-            safeTraits: ['用户敏感', '产品直觉', '证据导向'],
-            teamQuotes: [
-                '两个产品脑，一份发布清单。',
-                '先问用户，再改答案。',
-                '对细节认真，对彼此坦白。',
-            ],
+                '一方持续拉高终局，另一方把终局拆成可以交付的下一步。两级同时点火时，你们既能离开地面，也不会只停在想象里。',
+            story: {
+                title: '史蒂夫·乔布斯与史蒂夫·沃兹尼亚克',
+                paragraphs: [
+                    '沃兹尼亚克把电路板当作工程艺术品，乔布斯却从同一块板上看见了大众个人计算时代。',
+                    '一个专注系统底层的极致与优雅，一个执着于把冷冰冰的芯片变成改变世界的消费级产品。',
+                ],
+                image: '/images/pair-types/craft-original.webp',
+                receiptImage: '/images/pair-types/craft-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.cashflow-operators',
-            key: 'cashflow-operators',
-            title: '现金流行动派',
-            englishTitle: 'Cashflow Operators',
+            id: 'archetype.sushi-roll',
+            key: 'sushi-roll',
+            title: '寿司卷型合伙人',
+            englishTitle: 'Sushi Roll Pair',
+            tagline: '一个在外面扛住世界，一个在里面负责真的有料。',
             explanation:
-                '你们擅长把生存条件变成行动顺序，重视客户、交付和可持续节奏。别让短期确定性挤掉值得下注的长期机会。',
-            safeTraits: ['务实经营', '交付可靠', '节奏清醒'],
-            teamQuotes: [
-                '先活下来，再活得漂亮。',
-                '收入是反馈，交付是信用。',
-                '把每一块钱都变成下一步。',
-            ],
+                '你们自然形成清晰的内外分工。外层让世界愿意靠近，内层确保每一次承诺都有真实产品和系统支撑。',
+            story: {
+                title: '布莱恩·切斯基与内森·布莱查奇克',
+                paragraphs: [
+                    'Airbnb 用设计、叙事与情感体验让陌生人愿意彼此信任，而这种信任要规模化成立，还需要复杂的工程基底。',
+                    '一人在聚光灯下重塑旅行的定义，一人在幕后确保全球用户按下预订键时，庞大的技术轮盘丝毫不差地转动。',
+                ],
+                image: '/images/pair-types/trust-original.webp',
+                receiptImage: '/images/pair-types/trust-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.research-lab',
-            key: 'research-lab',
-            title: '前沿实验室',
-            englishTitle: 'Research Lab',
+            id: 'archetype.dual-core',
+            key: 'dual-core',
+            title: '双核型合伙人',
+            englishTitle: 'Dual-Core Pair',
+            tagline: '两个人都能单刷，所以经常忘了这是双排。',
             explanation:
-                '你们愿意围绕难题、技术和新证据持续探索。优势来自认知深度，挑战是为探索设置能被市场检验的出口。',
-            safeTraits: ['探索深入', '技术好奇', '耐心求证'],
-            teamQuotes: [
-                '先把未知变小，再把产品做大。',
-                '允许实验失败，不允许停止学习。',
-                '深水里找答案，岸上交付结果。',
-            ],
+                '你们都有完整的判断与推进能力，合作价值来自两套强系统的并行运转。要小心的是，各自都能走太远，才想起同步上下文。',
+            story: {
+                title: '拉里·佩奇与谢尔盖·布林',
+                paragraphs: [
+                    '第一次校园漫步时，他们几乎对每个话题都持有互不相让的尖锐观点。',
+                    '正是这种旗鼓相当的思想角力，把数学直觉与数据模型推到一起，也让大学实验最终演化成 Google。',
+                ],
+                image: '/images/pair-types/debate-original.webp',
+                receiptImage: '/images/pair-types/debate-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.narrative-market-fit',
-            key: 'narrative-market-fit',
-            title: '叙事市场搭档',
-            englishTitle: 'Narrative-Market Fit',
+            id: 'archetype.gears',
+            key: 'gears',
+            title: '齿轮型合伙人',
+            englishTitle: 'Interlocking Gears',
+            tagline: '你缺的那颗齿，刚好长在他身上。',
             explanation:
-                '你们能把产品价值翻译成市场愿意听懂的故事。最强时，叙事放大真实证据；最危险时，故事跑在产品前面。',
-            safeTraits: ['表达清晰', '市场敏锐', '连接资源'],
-            teamQuotes: [
-                '让好产品被世界正确理解。',
-                '故事负责开门，产品负责留人。',
-                '先有证据，再把声音放大。',
-            ],
+                '你们的强项不是相似，而是能互相咬合。一个人的输出正好成为另一个人的输入，接口越清楚，组合后的力量越大。',
+            story: {
+                title: '比尔·盖茨与保罗·艾伦',
+                paragraphs: [
+                    '当 Altair 8800 出现在杂志封面时，两人立即押上全部筹码，承诺交付一套尚不存在的 BASIC 解释器。',
+                    '艾伦搭建硬件仿真环境，盖茨把代码压缩到极致，两套能力在八周冲刺中严丝合缝地咬在一起。',
+                ],
+                image: '/images/pair-types/execution-original.webp',
+                receiptImage: '/images/pair-types/execution-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.complementary-monsters',
-            key: 'complementary-monsters',
-            title: '互补怪物',
-            englishTitle: 'Complementary Monsters',
+            id: 'archetype.double-helix',
+            key: 'double-helix',
+            title: '双螺旋型合伙人',
+            englishTitle: 'Double Helix Pair',
+            tagline: '一直往同一个方向长，但从来不是同一条线。',
             explanation:
-                '你们在关键能力上差得刚刚好，组合后的覆盖面明显大于各自单打独斗。把接口写清楚，互补才不会变成互相等待。',
-            safeTraits: ['能力互补', '覆盖全面', '组合强劲'],
-            teamQuotes: [
-                '各自离谱，合起来靠谱。',
-                '不同的强项，同一个战场。',
-                '接口清楚，怪物出动。',
-            ],
+                '你们对终局有稳定共识，却长期保留不同的方法和视角。分歧不是偏航，而是让同一个方向拥有两条互相校正的路径。',
+            story: {
+                title: '埃文·斯皮格尔与鲍比·墨菲',
+                paragraphs: [
+                    '一次共同项目的失败没有破坏两人的信任，反而让他们继续追问：社交产品能不能不制造永久的表演压力。',
+                    '一人持续定义产品哲学与审美方向，一人把反直觉的理念变成稳定的技术架构。',
+                ],
+                image: '/images/pair-types/creativity-original.webp',
+                receiptImage: '/images/pair-types/creativity-dot.webp',
+            },
             approval,
         },
         {
-            id: 'archetype.complementary-builders',
-            key: 'complementary-builders',
-            title: '互补建设者',
-            englishTitle: 'Complementary Builders',
+            id: 'archetype.sailboat',
+            key: 'sailboat',
+            title: '帆船型合伙人',
+            englishTitle: 'Sailboat Pair',
+            tagline: '一个负责接住风口，一个负责别被风口吹走。',
             explanation:
-                '你们没有被单一标签定义，而是在不同位置上共同把事情建起来。稳定的合作来自持续分工、复盘和重新对齐。',
-            safeTraits: ['协作稳健', '分工灵活', '持续建设'],
-            teamQuotes: [
-                '不必一样，也能一起建成。',
-                '边做边对齐，边走边加固。',
-                '两种方法，一个作品。',
-            ],
+                '你们同时拥有捕捉机会和维持秩序的能力。一方让船借到风，另一方用规则、现金与边界确保它不会失控。',
+            story: {
+                title: '马云与蔡崇信',
+                paragraphs: [
+                    '1999 年，蔡崇信走进杭州湖畔花园，看见马云用近乎疯狂的理想主义凝聚一群年轻人。',
+                    '一个在前面挥舞旗帜开拓疆域，另一个把狂热装进股权、融资与现代公司治理的制度骨骼。',
+                ],
+                image: '/images/pair-types/vision-original.webp',
+                receiptImage: '/images/pair-types/vision-dot.webp',
+            },
+            approval,
+        },
+    ],
+    modifiers: [
+        { id: 'modifier.same-mountain', group: 'identity', label: '同一座山', approval },
+        { id: 'modifier.digital-twin', group: 'identity', label: 'Digital Twin', approval },
+        { id: 'modifier.dual-big-outcome', group: 'identity', label: '双大结果', approval },
+        { id: 'modifier.dual-product', group: 'identity', label: '双产品经理', approval },
+        { id: 'modifier.cashflow-couple', group: 'identity', label: 'Cashflow Couple', approval },
+        { id: 'modifier.research-driven', group: 'identity', label: 'Research Driven', approval },
+        { id: 'modifier.quiet-reactive', group: 'dynamic', label: '闭麦 Founder × 发疯联创', approval },
+        { id: 'modifier.narrative-market-fit', group: 'dynamic', label: 'Narrative-Market Fit', approval },
+        { id: 'modifier.high-pressure-pair', group: 'dynamic', label: '高压搭档', approval },
+        { id: 'modifier.fight-and-return', group: 'dynamic', label: '吵完还能开会', approval },
+        { id: 'modifier.story-and-delivery', group: 'dynamic', label: '一个讲故事，一个交付', approval },
+        { id: 'modifier.independent-founders', group: 'dynamic', label: '双人组队，各自单刷', approval },
+    ],
+    legendaryTraits: [
+        {
+            id: 'trait.century-company',
+            title: '百年公司',
+            copy: '你们俩真的有点像要开一家百年公司。',
             approval,
         },
     ],
@@ -391,7 +445,7 @@ export const contentLibraryV1 = {
     ],
     conservativeResult: {
         id: 'conservative.complete',
-        archetypeId: 'archetype.complementary-builders',
+        pairTypeId: 'archetype.chopsticks',
         riskPatternId: 'risk.parallel-solo-founders',
         reportModuleIds: [
             'report.team-portrait',

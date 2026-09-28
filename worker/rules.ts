@@ -1,8 +1,8 @@
 import questionBankJson from '../docs/calibration/question-bank-v0.json';
 import type { PairProfile } from './questionnaire';
 
-export const RULES_VERSION = 'cofounder-rules-v2';
-export const PAIR_FEATURE_VECTOR_VERSION = 'pair-feature-vector-v2';
+export const RULES_VERSION = 'cofounder-rules-v3';
+export const PAIR_FEATURE_VECTOR_VERSION = 'pair-feature-vector-v3';
 
 export const DIMENSIONS = [
     'ambition',
@@ -46,6 +46,18 @@ export type SensitiveSignal = {
     state: 'aligned' | 'conflict' | 'unresolved';
     severity: Severity | null;
     ruleVersion: string;
+};
+
+export type RelationshipAxes = {
+    direction: { alignment: number; mode: 'in_sync' | 'distinct_emphasis' };
+    capability: { complementarity: number; mode: 'similar' | 'complementary' };
+    power: { clarity: number; mode: 'single_core' | 'dual_core' | 'unresolved' };
+    pace: {
+        participantA: number;
+        participantB: number;
+        contrast: number;
+        mode: 'aggressive' | 'steady' | 'mixed';
+    };
 };
 
 type QuestionOption = {
@@ -627,115 +639,280 @@ export const ordinaryConflictFlags = (input: {
 const severityRank = (severity: Severity) =>
     severity === 'critical' ? 3 : severity === 'high' ? 2 : 1;
 
+const roleSimilarity = (left: string[], right: string[]) => {
+    const union = new Set([...left, ...right]);
+    if (union.size === 0) return 100;
+    const intersection = new Set(left.filter((role) => right.includes(role)));
+    return rounded((intersection.size / union.size) * 100);
+};
+
+const hasAnyRole = (roles: string[], candidates: string[]) =>
+    candidates.some((role) => roles.includes(role));
+
+type PairTypeSignals = {
+    axes: RelationshipAxes;
+    directionAlignment: number;
+    capabilityComplementarity: number;
+    understanding: number;
+    visionExecutionSplit: number;
+    externalInternalSplit: number;
+    methodContrast: number;
+    autonomy: number;
+    governanceMatch: number;
+    conflictMatch: number;
+};
+
+export const rankPairTypes = (signals: PairTypeSignals) => {
+    const dualCoreStrength =
+        signals.axes.power.mode === 'dual_core'
+            ? 100
+            : signals.axes.power.mode === 'unresolved'
+              ? 55
+              : 25;
+    const scores = {
+        chopsticks: rounded(
+            signals.directionAlignment * 0.35 +
+                (100 - signals.capabilityComplementarity) * 0.2 +
+                signals.understanding * 0.3 +
+                signals.conflictMatch * 0.15,
+        ),
+        'split-pot': rounded(
+            signals.directionAlignment * 0.35 +
+                signals.axes.pace.contrast * 0.45 +
+                (100 - signals.conflictMatch) * 0.2,
+        ),
+        'two-stage-rocket': rounded(
+            signals.visionExecutionSplit * 0.5 +
+                signals.directionAlignment * 0.3 +
+                signals.capabilityComplementarity * 0.2,
+        ),
+        'sushi-roll': rounded(
+            signals.externalInternalSplit * 0.55 +
+                signals.capabilityComplementarity * 0.25 +
+                signals.directionAlignment * 0.2,
+        ),
+        'dual-core': rounded(
+            dualCoreStrength * 0.5 +
+                signals.autonomy * 0.3 +
+                signals.directionAlignment * 0.2,
+        ),
+        gears: rounded(
+            signals.capabilityComplementarity * 0.6 +
+                signals.governanceMatch * 0.2 +
+                signals.directionAlignment * 0.2,
+        ),
+        'double-helix': rounded(
+            signals.directionAlignment * 0.45 +
+                signals.methodContrast * 0.45 +
+                signals.governanceMatch * 0.1,
+        ),
+        sailboat: rounded(
+            Math.max(
+                signals.axes.pace.participantA,
+                signals.axes.pace.participantB,
+            ) *
+                0.3 +
+                signals.governanceMatch * 0.4 +
+                signals.axes.pace.contrast * 0.3,
+        ),
+    };
+    return Object.entries(scores)
+        .sort((left, right) => right[1] - left[1])
+        .map(([id, score]) => ({ id, score }));
+};
+
 const publicCandidates = (
     participantA: RulesParticipant,
     participantB: RulesParticipant,
     safeValuesA: Record<Dimension, number>,
     safeValuesB: Record<Dimension, number>,
+    publicMatches: ReturnType<typeof dimensionMatches>,
+    publicMirrorCounts: {
+        a: { exact: number; near: number; opposite: number };
+        b: { exact: number; near: number; opposite: number };
+    },
     flags: ConflictFlag[],
 ) => {
-    const candidates: string[] = [];
-    const forbidden: string[] = [];
-    const safeAmbitionGap = Math.abs(
-        safeValuesA.ambition - safeValuesB.ambition,
-    );
-    if (safeValuesA.ambition >= 65 && safeValuesB.ambition >= 65) {
-        candidates.push('dual-big-outcome');
-    }
-    if (
-        participantA.profile.responsibilities.includes('product') &&
-        participantB.profile.responsibilities.includes('product') &&
-        (safeValuesA.product + safeValuesB.product) / 2 >= 50 &&
-        Math.abs(safeValuesA.product - safeValuesB.product) <= 25
-    ) {
-        candidates.push('dual-product');
-    }
-    if ((safeValuesA.money + safeValuesB.money) / 2 <= 55) {
-        candidates.push('cashflow-operators');
-    }
-    if (
-        participantA.profile.responsibilities.includes('research') ||
-        participantB.profile.responsibilities.includes('research')
-    ) {
-        candidates.push('research-lab');
-    }
+    const rolesA = participantA.profile.responsibilities;
+    const rolesB = participantB.profile.responsibilities;
     const tags = [
         ...collectTags(participantA.core),
         ...collectTags(participantB.core),
     ];
-    if (
-        tags.some(
-            (tag) => tag.includes('narrative') || tag === 'capital-orientation',
-        )
-    ) {
-        candidates.push('narrative-market-fit');
-    }
-    if (safeAmbitionGap >= 30) candidates.push('vision-reality');
-    else forbidden.push('vision-reality');
-    const complementaryDistance = ['operating', 'external'].some(
-        (dimension) => {
-            const gap = Math.abs(
-                safeValuesA[dimension as Dimension] -
-                    safeValuesB[dimension as Dimension],
-            );
-            return gap >= 26 && gap <= 70;
-        },
+    const directionAlignment = rounded(
+        (publicMatches.ambition.match +
+            publicMatches.money.match +
+            publicMatches.product.match) /
+            3,
     );
-    const severeFlags = flags.filter(
-        ({ severity }) => severity !== 'moderate',
-    ).length;
-    if (complementaryDistance && severeFlags < 2)
-        candidates.push('complementary-monsters');
-    else if (severeFlags >= 2) forbidden.push('complementary-monsters');
-    candidates.push('complementary-builders');
-
-    const scoredAlternatives = [
+    const roleSimilarityScore = roleSimilarity(rolesA, rolesB);
+    const capabilityComplementarity = rounded(
+        (100 - roleSimilarityScore) * 0.5 +
+            ((publicMatches.operating.match + publicMatches.external.match) / 2) *
+                0.5,
+    );
+    const paceA = rounded((safeValuesA.risk + safeValuesA.operating) / 2);
+    const paceB = rounded((safeValuesB.risk + safeValuesB.operating) / 2);
+    const paceContrast = Math.abs(paceA - paceB);
+    const exactTotal = publicMirrorCounts.a.exact + publicMirrorCounts.b.exact;
+    const understanding = Math.min(100, exactTotal * 10);
+    const externalRoles = ['sales', 'bd', 'marketing-pr', 'fundraising'];
+    const internalRoles = [
+        'frontend',
+        'backend',
+        'ai-models',
+        'research',
+        'design',
+        'customer-delivery',
+        'finance',
+        'company-management',
+    ];
+    const visionRoles = ['product', 'strategy', 'fundraising', 'marketing-pr'];
+    const executionRoles = [
+        'frontend',
+        'backend',
+        'ai-models',
+        'customer-delivery',
+        'finance',
+        'company-management',
+    ];
+    const splitScore = (left: string[], right: string[]) =>
+        Math.max(
+            Number(hasAnyRole(rolesA, left) && hasAnyRole(rolesB, right)),
+            Number(hasAnyRole(rolesB, left) && hasAnyRole(rolesA, right)),
+        ) * 100;
+    const powerMode: RelationshipAxes['power']['mode'] =
+        publicMatches.authority.state === 'same_decision_maker'
+            ? 'single_core'
+            : publicMatches.authority.state === 'shared'
+              ? 'dual_core'
+              : 'unresolved';
+    const axes: RelationshipAxes = {
+        direction: {
+            alignment: directionAlignment,
+            mode: directionAlignment >= 75 ? 'in_sync' : 'distinct_emphasis',
+        },
+        capability: {
+            complementarity: capabilityComplementarity,
+            mode: capabilityComplementarity >= 60 ? 'complementary' : 'similar',
+        },
+        power: {
+            clarity: publicMatches.governance.match,
+            mode: powerMode,
+        },
+        pace: {
+            participantA: paceA,
+            participantB: paceB,
+            contrast: paceContrast,
+            mode:
+                paceContrast >= 30
+                    ? 'mixed'
+                    : (paceA + paceB) / 2 >= 60
+                      ? 'aggressive'
+                      : 'steady',
+        },
+    };
+    const rankedTypes = rankPairTypes({
+        axes,
+        directionAlignment,
+        capabilityComplementarity,
+        understanding,
+        visionExecutionSplit: splitScore(visionRoles, executionRoles),
+        externalInternalSplit: splitScore(externalRoles, internalRoles),
+        methodContrast: rounded(
+            (publicMatches.differences.product +
+                publicMatches.differences.operating) /
+                2,
+        ),
+        autonomy: Math.min(100, (rolesA.length + rolesB.length) * 15),
+        governanceMatch: publicMatches.governance.match,
+        conflictMatch: publicMatches.conflict.match,
+    });
+    const identityScores = [
+        { id: 'modifier.same-mountain', score: directionAlignment },
+        { id: 'modifier.digital-twin', score: understanding },
         {
-            id: 'dual-big-outcome',
+            id: 'modifier.dual-big-outcome',
             score: (safeValuesA.ambition + safeValuesB.ambition) / 2,
         },
         {
-            id: 'dual-product',
+            id: 'modifier.dual-product',
             score:
-                (safeValuesA.product + safeValuesB.product) / 2 -
-                Math.abs(safeValuesA.product - safeValuesB.product),
+                Number(rolesA.includes('product') && rolesB.includes('product')) *
+                    50 +
+                publicMatches.product.match / 2,
         },
         {
-            id: 'cashflow-operators',
+            id: 'modifier.cashflow-couple',
             score: 100 - (safeValuesA.money + safeValuesB.money) / 2,
         },
         {
-            id: 'narrative-market-fit',
-            score:
-                (safeValuesA.external + safeValuesB.external) / 2 +
-                (tags.length > 0 ? 20 : 0),
-        },
-        {
-            id: 'research-lab',
+            id: 'modifier.research-driven',
             score:
                 Number(
-                    participantA.profile.responsibilities.includes('research'),
-                ) *
-                    50 +
-                Number(
-                    participantB.profile.responsibilities.includes('research'),
-                ) *
-                    50,
+                    hasAnyRole(rolesA, ['research', 'ai-models']) ||
+                        hasAnyRole(rolesB, ['research', 'ai-models']),
+                ) * 100,
         },
     ].sort((left, right) => right.score - left.score);
-    for (const alternative of scoredAlternatives) {
-        if (new Set(candidates).size >= 3) break;
-        if (
-            !forbidden.includes(alternative.id) &&
-            !candidates.includes(alternative.id)
-        ) {
-            candidates.push(alternative.id);
-        }
-    }
+    const dynamicScores = [
+        {
+            id: 'modifier.quiet-reactive',
+            score: Math.min(100, publicMatches.conflict.match < 70 ? 90 : 20),
+        },
+        {
+            id: 'modifier.narrative-market-fit',
+            score:
+                Number(
+                    tags.some(
+                        (tag) =>
+                            tag.includes('narrative') ||
+                            tag === 'capital-orientation',
+                    ),
+                ) * 60 +
+                splitScore(externalRoles, internalRoles) * 0.4,
+        },
+        {
+            id: 'modifier.high-pressure-pair',
+            score: (paceA + paceB) / 2,
+        },
+        {
+            id: 'modifier.fight-and-return',
+            score:
+                publicMatches.conflict.match * 0.6 +
+                ((safeValuesA.conflict + safeValuesB.conflict) / 2) * 0.4,
+        },
+        {
+            id: 'modifier.story-and-delivery',
+            score: splitScore(externalRoles, internalRoles),
+        },
+        {
+            id: 'modifier.independent-founders',
+            score: (100 - roleSimilarityScore) * 0.5 +
+                Number(powerMode === 'dual_core') * 50,
+        },
+    ].sort((left, right) => right.score - left.score);
+    const hasCenturyCompanyTrait =
+        directionAlignment >= 90 &&
+        publicMatches.governance.match >= 90 &&
+        publicMatches.conflict.match >= 85 &&
+        safeValuesA.ambition >= 65 &&
+        safeValuesB.ambition >= 65 &&
+        exactTotal >= 8 &&
+        publicMirrorCounts.a.opposite + publicMirrorCounts.b.opposite === 0 &&
+        flags.length === 0;
 
     return {
-        candidates: [...new Set(candidates)].slice(0, 5),
-        forbidden: [...new Set(forbidden)],
+        axes,
+        candidates: rankedTypes.slice(0, 3).map(({ id }) => id),
+        forbidden: rankedTypes.slice(5).map(({ id }) => id),
+        modifierCandidates: {
+            identity: identityScores.slice(0, 3).map(({ id }) => id),
+            dynamic: dynamicScores.slice(0, 3).map(({ id }) => id),
+        },
+        legendaryTraitId: hasCenturyCompanyTrait
+            ? 'trait.century-company'
+            : null,
     };
 };
 
@@ -841,6 +1018,11 @@ export const derivePairRules = (
         participantB,
         safeValuesA,
         safeValuesB,
+        publicMatches,
+        {
+            a: publicMirrorCounts(mirrorA),
+            b: publicMirrorCounts(mirrorB),
+        },
         flags,
     );
     const publicTags = [
@@ -947,6 +1129,7 @@ export const derivePairRules = (
             },
             ordinary_conflict_flag_codes: flags.map(({ id }) => id),
             narrative_tag_codes: publicTags,
+            relationship_axes: candidateResult.axes,
         },
         publicFeatures: {
             rulesVersion: RULES_VERSION,
@@ -959,10 +1142,13 @@ export const derivePairRules = (
             tags: publicTags,
             publicArchetypeCandidates: candidateResult.candidates,
             forbiddenPublicArchetypes: candidateResult.forbidden,
+            modifierCandidates: candidateResult.modifierCandidates,
+            legendaryTraitId: candidateResult.legendaryTraitId,
+            relationshipAxes: candidateResult.axes,
         },
         conservativeResult: {
             publicArchetypeId:
-                candidateResult.candidates[0] || 'complementary-builders',
+                candidateResult.candidates[0] || 'chopsticks',
         },
     };
 };

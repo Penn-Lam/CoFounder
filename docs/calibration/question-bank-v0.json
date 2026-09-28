@@ -576,14 +576,14 @@
   "excluded_dimension_gap_flags": ["external"],
   "classification_catalog": {
     "public_archetypes": [
-      { "id": "vision-reality", "working_label": "愿景 × 现实 / Vision × Reality" },
-      { "id": "dual-big-outcome", "working_label": "双大结果 / Category Builders" },
-      { "id": "dual-product", "working_label": "双产品经理 / Product Twins" },
-      { "id": "cashflow-operators", "working_label": "现金流搭档 / Cashflow Operators" },
-      { "id": "research-lab", "working_label": "研究实验室 / Research Lab" },
-      { "id": "narrative-market-fit", "working_label": "叙事市场匹配 / Narrative-Market Fit" },
-      { "id": "complementary-monsters", "working_label": "互补怪物 / Complementary Monsters" },
-      { "id": "complementary-builders", "working_label": "互补建设者 / Complementary Builders" }
+      { "id": "chopsticks", "working_label": "筷子型 / Chopsticks Pair" },
+      { "id": "split-pot", "working_label": "鸳鸯锅型 / Split Pot Pair" },
+      { "id": "two-stage-rocket", "working_label": "两级火箭型 / Two-Stage Rocket" },
+      { "id": "sushi-roll", "working_label": "寿司卷型 / Sushi Roll Pair" },
+      { "id": "dual-core", "working_label": "双核型 / Dual-Core Pair" },
+      { "id": "gears", "working_label": "齿轮型 / Interlocking Gears" },
+      { "id": "double-helix", "working_label": "双螺旋型 / Double Helix Pair" },
+      { "id": "sailboat", "working_label": "帆船型 / Sailboat Pair" }
     ],
     "private_risk_patterns": [
       { "id": "dual-leadership", "working_label": "双一号位" },

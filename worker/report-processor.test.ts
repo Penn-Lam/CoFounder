@@ -97,15 +97,18 @@ describe('private report processor', () => {
         expect(result.report.sensitiveContext.attribution).toBe('unattributed');
         expect(result.report.versions).toEqual({
             questionSet: questionBank.question_set_version,
-            rules: 'cofounder-rules-v2',
-            content: 'cofounder-content-v2',
+            rules: 'cofounder-rules-v3',
+            content: 'cofounder-content-v3',
         });
         expect(result.report.classification).toMatchObject({
             source: 'conservative',
             provider: null,
             fallbackReason: 'provider_not_configured',
-            decisionSchemaVersion: 'cofounder-jev-decision-v2',
+            decisionSchemaVersion: 'cofounder-jev-decision-v3',
         });
+        expect(result.report.portrait.modifiers).toHaveLength(2);
+        expect(result.report.portrait.story.image).toMatch(/-original\.webp$/);
+        expect(result.report.portrait.story.receiptImage).toMatch(/-dot\.webp$/);
         expect(serialized).not.toContain('core:Q1');
         expect(serialized).not.toContain('red-line:R1');
         expect(serialized).not.toMatch(/overall|aggregate|participant.*value/i);
@@ -122,6 +125,10 @@ describe('private report processor', () => {
                 const publicArchetypeId = last(
                     request.choices.publicArchetype.criteria,
                 );
+                const modifierIds = [
+                    last(request.choices.identityModifier.criteria),
+                    last(request.choices.dynamicModifier.criteria),
+                ] as [string, string];
                 const mirrorMisreadId = 'mirror.asymmetric-model';
                 const privateRiskPatternId = 'risk.high-pressure-pair';
                 return {
@@ -134,12 +141,14 @@ describe('private report processor', () => {
                     confidence: null,
                     selectedContentIds: [
                         publicArchetypeId,
+                        ...modifierIds,
                         mirrorMisreadId,
                         privateRiskPatternId,
                         ...promptIds,
                     ],
                     fallbackReason: null,
                     publicArchetypeId,
+                    modifierIds,
                     alignmentDimension: last(
                         request.choices.strongestAlignment.criteria,
                     ),

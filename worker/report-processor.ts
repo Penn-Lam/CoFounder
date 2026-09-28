@@ -39,22 +39,37 @@ const toRulesParticipant = (state: PairTestState): RulesParticipant => {
 type PairRules = ReturnType<typeof derivePairRules>;
 
 const archetypeCriteria: Record<string, string> = {
-    'archetype.vision-reality':
-        'Different but useful vision and execution orientations.',
-    'archetype.dual-big-outcome':
-        'Both participants consistently favor large, long-term outcomes.',
-    'archetype.dual-product':
-        'Both participants have product in participant_role_codes and share a strong product or user-evidence orientation.',
-    'archetype.cashflow-operators':
-        'The Pair role codes and money pattern emphasize sales, finance, customer delivery, revenue, and sustainable operation.',
-    'archetype.research-lab':
-        'Research appears in participant_role_codes and the Pair has a meaningful technical exploration pattern.',
-    'archetype.narrative-market-fit':
-        'Role and narrative codes combine fundraising, marketing, BD, or public storytelling with operating evidence.',
-    'archetype.complementary-monsters':
-        'Participant role codes show unusually strong functional complement without multiple severe structural conflicts.',
-    'archetype.complementary-builders':
-        'Use when roles are broadly complementary but no specialized identity is clearly more defining.',
+    'archetype.chopsticks':
+        'High direction alignment, similar capability shape, and unusually accurate mutual understanding.',
+    'archetype.split-pot':
+        'Shared destination with a strong contrast in risk appetite or operating pace.',
+    'archetype.two-stage-rocket':
+        'A clear vision-to-execution split where one participant extends the horizon and the other turns it into delivery.',
+    'archetype.sushi-roll':
+        'A clear external-to-internal split where one participant represents the company and the other strengthens the substance.',
+    'archetype.dual-core':
+        'Two autonomous founders with strong independent judgment and a dual-core authority pattern.',
+    'archetype.gears':
+        'High functional complementarity with clear interfaces and useful interdependence.',
+    'archetype.double-helix':
+        'Strong destination alignment combined with persistent differences in method.',
+    'archetype.sailboat':
+        'Opportunity-seeking pace balanced by clear governance and operating restraint.',
+};
+
+const modifierCriteria: Record<string, string> = {
+    'modifier.same-mountain': 'The Pair is strongly aligned on destination.',
+    'modifier.digital-twin': 'Both participants predict each other unusually well.',
+    'modifier.dual-big-outcome': 'Both participants favor ambitious long-term outcomes.',
+    'modifier.dual-product': 'Both participants show a strong product orientation.',
+    'modifier.cashflow-couple': 'Both participants prioritize cashflow and sustainable operation.',
+    'modifier.research-driven': 'Research or model exploration is central to the Pair.',
+    'modifier.quiet-reactive': 'The Pair has a meaningful conflict-timing contrast.',
+    'modifier.narrative-market-fit': 'Narrative strength is paired with market-facing behavior.',
+    'modifier.high-pressure-pair': 'Both participants sustain an unusually intense pace.',
+    'modifier.fight-and-return': 'The Pair surfaces conflict and reliably returns to work.',
+    'modifier.story-and-delivery': 'External storytelling and internal delivery are clearly split.',
+    'modifier.independent-founders': 'Both participants operate with high autonomy.',
 };
 
 const riskPatternCriteria: Record<string, string> = {
@@ -231,6 +246,16 @@ export const buildClassificationRequest = (
                 (id) => archetypeCriteria[id],
                 `archetype.${rules.conservativeResult.publicArchetypeId}`,
             ),
+            identityModifier: choiceSet(
+                rules.publicFeatures.modifierCandidates.identity,
+                (id) => modifierCriteria[id],
+                rules.publicFeatures.modifierCandidates.identity[0],
+            ),
+            dynamicModifier: choiceSet(
+                rules.publicFeatures.modifierCandidates.dynamic,
+                (id) => modifierCriteria[id],
+                rules.publicFeatures.modifierCandidates.dynamic[0],
+            ),
             strongestAlignment: choiceSet(
                 alignmentCandidates,
                 (dimension) =>
@@ -403,6 +428,14 @@ export const processPairReport = async (
     const archetype = contentLibraryV1.publicArchetypes.find(
         ({ id }) => id === classification.publicArchetypeId,
     )!;
+    const modifiers = classification.modifierIds.map((id) =>
+        contentLibraryV1.modifiers.find((item) => item.id === id)!,
+    );
+    const legendaryTrait = rules.publicFeatures.legendaryTraitId
+        ? contentLibraryV1.legendaryTraits.find(
+              ({ id }) => id === rules.publicFeatures.legendaryTraitId,
+          )!
+        : null;
     const risk = contentLibraryV1.privateRiskPatterns.find(
         ({ id }) => id === classification.privateRiskPatternId,
     )!;
@@ -440,11 +473,25 @@ export const processPairReport = async (
             fallbackReason: classification.fallbackReason,
         },
         roles: { a: 'creator', b: 'partner' },
+        relationshipAxes: rules.publicFeatures.relationshipAxes,
         portrait: {
-            archetypeId: archetype.id,
+            pairTypeId: archetype.id,
             title: archetype.title,
             englishTitle: archetype.englishTitle,
+            tagline: archetype.tagline,
             copy: archetype.explanation,
+            story: {
+                ...archetype.story,
+                paragraphs: [...archetype.story.paragraphs],
+            },
+            modifiers: modifiers.map(({ id, label }) => ({ id, label })),
+            legendaryTrait: legendaryTrait
+                ? {
+                      id: legendaryTrait.id,
+                      title: legendaryTrait.title,
+                      copy: legendaryTrait.copy,
+                  }
+                : null,
         },
         alignment: {
             dimension: alignment.dimension,

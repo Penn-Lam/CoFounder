@@ -11,6 +11,17 @@ describe('Content Library validation', () => {
         expect(result).toEqual({ valid: true, errors: [] });
         expect(contentLibraryV1.prompts.length).toBeGreaterThanOrEqual(40);
         expect(contentLibraryV1.publicArchetypes).toHaveLength(8);
+        expect(contentLibraryV1.modifiers).toHaveLength(12);
+        expect(contentLibraryV1.legendaryTraits.map(({ id }) => id)).toContain(
+            'trait.century-company',
+        );
+        expect(
+            contentLibraryV1.publicArchetypes.every(
+                ({ story }) =>
+                    story.image.endsWith('-original.webp') &&
+                    story.receiptImage.endsWith('-dot.webp'),
+            ),
+        ).toBe(true);
         expect(contentLibraryV1.privateRiskPatterns).toHaveLength(5);
         expect(contentLibraryV1.mirrorMisreads).toHaveLength(4);
     });
@@ -70,6 +81,15 @@ describe('Content Library validation', () => {
 
         expect(validateContentLibrary(library).errors).toContain(
             'Library contains placeholder copy',
+        );
+    });
+
+    it('rejects emoji in any approved content', () => {
+        const library = copyLibrary() as any;
+        library.publicArchetypes[0].title = '筷子型合伙人🚀';
+
+        expect(validateContentLibrary(library).errors).toContain(
+            'Library contains emoji',
         );
     });
 });

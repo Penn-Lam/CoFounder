@@ -1,5 +1,6 @@
 import type { PairTestState } from './pair-repository';
 import type { ClassificationProvenance } from './jev-classifier';
+import type { RelationshipAxes } from './rules';
 
 export type StoredPairResult = {
     pairId: string;
@@ -41,11 +42,21 @@ export type PrivateReportFacts = {
     versions: { questionSet: string; rules: string; content: string };
     classification: ClassificationProvenance;
     roles: { a: 'creator'; b: 'partner' };
+    relationshipAxes: RelationshipAxes;
     portrait: {
-        archetypeId: string;
+        pairTypeId: string;
         title: string;
         englishTitle: string;
+        tagline: string;
         copy: string;
+        story: {
+            title: string;
+            paragraphs: string[];
+            image: string;
+            receiptImage: string;
+        };
+        modifiers: Array<{ id: string; label: string }>;
+        legendaryTrait: { id: string; title: string; copy: string } | null;
     };
     alignment: {
         dimension: string;

@@ -9,6 +9,7 @@ import {
     mirrorRelation,
     ordinaryConflictFlags,
     participantDimensionValues,
+    rankPairTypes,
     sensitiveSignalFor,
     type Dimension,
     type RulesParticipant,
@@ -520,6 +521,82 @@ describe('versioned Rules boundary', () => {
         ).toBeLessThanOrEqual(5);
         expect(result.publicFeatures.publicArchetypeCandidates).toContain(
             result.conservativeResult.publicArchetypeId,
+        );
+    });
+
+    it('distinguishes all eight Pair Types with asymmetric relationship signals', () => {
+        const base = {
+            axes: {
+                direction: { alignment: 70, mode: 'distinct_emphasis' as const },
+                capability: { complementarity: 40, mode: 'similar' as const },
+                power: { clarity: 70, mode: 'single_core' as const },
+                pace: {
+                    participantA: 50,
+                    participantB: 50,
+                    contrast: 0,
+                    mode: 'steady' as const,
+                },
+            },
+            directionAlignment: 70,
+            capabilityComplementarity: 40,
+            understanding: 50,
+            visionExecutionSplit: 0,
+            externalInternalSplit: 0,
+            methodContrast: 20,
+            autonomy: 50,
+            governanceMatch: 70,
+            conflictMatch: 80,
+        };
+        const cases = [
+            ['chopsticks', {
+                directionAlignment: 100,
+                capabilityComplementarity: 0,
+                understanding: 100,
+                conflictMatch: 100,
+            }],
+            ['split-pot', {
+                directionAlignment: 100,
+                conflictMatch: 0,
+                axes: {
+                    ...base.axes,
+                    pace: { participantA: 100, participantB: 0, contrast: 100, mode: 'mixed' as const },
+                },
+            }],
+            ['two-stage-rocket', { visionExecutionSplit: 100 }],
+            ['sushi-roll', { externalInternalSplit: 100 }],
+            ['dual-core', {
+                autonomy: 100,
+                axes: {
+                    ...base.axes,
+                    power: { clarity: 100, mode: 'dual_core' as const },
+                },
+            }],
+            ['gears', { capabilityComplementarity: 100, governanceMatch: 100 }],
+            ['double-helix', {
+                directionAlignment: 100,
+                methodContrast: 100,
+                governanceMatch: 100,
+            }],
+            ['sailboat', {
+                governanceMatch: 100,
+                axes: {
+                    ...base.axes,
+                    pace: { participantA: 100, participantB: 0, contrast: 100, mode: 'mixed' as const },
+                },
+            }],
+        ] as const;
+
+        for (const [expected, overrides] of cases) {
+            expect(rankPairTypes({ ...base, ...overrides })[0].id).toBe(expected);
+        }
+    });
+
+    it('awards the Century Company trait only for the strict aligned fixture', () => {
+        const aligned = participant({ core: { Q2: 'D', Q3: 'D' } });
+        const result = derivePairRules(aligned, aligned);
+
+        expect(result.publicFeatures.legendaryTraitId).toBe(
+            'trait.century-company',
         );
     });
 

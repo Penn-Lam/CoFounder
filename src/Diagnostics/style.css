@@ -223,6 +223,14 @@
     border-left: 3px solid #008080;
 }
 
+.review-card > img {
+    display: block;
+    width: 100%;
+    margin: 12px 0;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+}
+
 .prompt-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -260,6 +268,109 @@
     font-family: Millennium, 'Microsoft YaHei', serif;
 }
 
+.report-story {
+    display: grid;
+    overflow: hidden;
+    margin: 0;
+    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.1fr);
+    border: 2px solid var(--ink);
+    background: #ffffff;
+}
+
+.report-story > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 250px;
+    object-fit: cover;
+}
+
+.report-story figcaption {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    padding: clamp(18px, 4vw, 34px);
+}
+
+.report-story figcaption > strong {
+    font-size: 20px;
+}
+
+.pair-identity {
+    padding: clamp(22px, 5vw, 46px);
+    border: 2px solid var(--ink);
+    background: var(--tint-warm);
+    box-shadow: 6px 6px 0 rgba(16, 42, 42, 0.18);
+}
+
+.pair-identity h1 {
+    max-width: none;
+    margin-top: 0;
+}
+
+.pair-identity h2 {
+    max-width: 720px;
+    margin: 18px 0 12px;
+    font-size: clamp(22px, 4vw, 34px);
+    line-height: 1.2;
+}
+
+.pair-modifiers,
+.receipt-modifiers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pair-modifiers {
+    margin-top: 20px;
+}
+
+.pair-modifiers span {
+    padding: 6px 10px;
+    border: 1px solid var(--ink);
+    background: #ffffff;
+    font-family: Terminal, monospace;
+    font-size: 12px;
+}
+
+.legendary-trait {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 3px double #7a5a00;
+    background: #fff4bd;
+}
+
+.legendary-trait strong {
+    font-size: 23px;
+}
+
+.report-details {
+    border-top: 3px double var(--ink);
+    border-bottom: 3px double var(--ink);
+    padding: 16px 0;
+}
+
+.report-details > summary {
+    width: fit-content;
+    padding: 8px 14px;
+    box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: MSSerif, sans-serif;
+    list-style: none;
+}
+
+.report-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.report-details[open] > summary {
+    margin-bottom: 24px;
+    box-shadow: inset -1px -1px var(--button-highlight), inset 1px 1px var(--window-frame);
+}
+
 .private-report > * + * {
     margin-top: 32px;
 }
@@ -286,14 +397,6 @@
 .private-report header,
 .private-report footer {
     display: block;
-}
-
-.report-ready-notice {
-    width: fit-content;
-    padding: 4px 8px;
-    background: var(--info);
-    color: #ffffff;
-    font-family: Terminal, monospace;
 }
 
 .report-secondary {
@@ -1536,21 +1639,41 @@
     text-align: center;
 }
 
-.receipt-traits {
-    margin: 0;
+.receipt-pair-image {
+    display: block;
+    width: 100%;
+    max-height: 190px;
+    margin: 0 0 14px;
+    border: 1px solid rgba(0, 0, 0, 0.45);
+    object-fit: cover;
+}
+
+.receipt-modifiers {
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.receipt-modifiers span {
+    padding: 4px 6px;
+    border: 1px solid currentColor;
     font-size: 8px;
+    font-weight: bold;
 }
 
-.receipt-traits div {
-    display: grid;
-    grid-template-columns: 26px 1fr;
-    padding: 4px 0;
-    border-bottom: 1px dotted rgba(0, 0, 0, 0.25);
+.receipt-legendary-trait {
+    margin: 12px 0;
+    padding: 9px;
+    border: 3px double currentColor;
+    text-align: center;
 }
 
-.receipt-traits dt,
-.receipt-traits dd {
-    margin: 0;
+.receipt-legendary-trait strong {
+    font-size: 12px;
+}
+
+.receipt-legendary-trait p {
+    margin: 4px 0 0 !important;
+    font-size: 8px !important;
 }
 
 .receipt-cta {
@@ -1807,6 +1930,24 @@
     .pair-complete h1,
     .invite-claim h1 {
         font-size: 24px;
+    }
+
+    .report-story {
+        grid-template-columns: 1fr;
+    }
+
+    .report-story > img {
+        min-height: 180px;
+        max-height: 240px;
+    }
+
+    .pair-identity {
+        padding: 20px 16px;
+        box-shadow: 4px 4px 0 rgba(16, 42, 42, 0.18);
+    }
+
+    .pair-identity h2 {
+        font-size: 21px;
     }
 
     .pair-profile fieldset {
