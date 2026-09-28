@@ -17,10 +17,10 @@ applications and product-specific Start actions. The questionnaire placeholder
 and Credits content are local Cofounder components rendered inside the reused
 window chrome.
 
-The vendored `FusionPixel-{Bold,Regular}.woff2` subsets were extended with the
-glyphs `票` (U+7968) and `！` (U+FF01) from the upstream
-[Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font) (Regular)
-and
+The vendored `FusionPixel-{Bold,Regular}.woff2` subsets cover the complete
+Cofounder interface and full-length result-story corpus. They were generated
+from the upstream [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)
+(Regular) and
 [Fusion Bold Pixel Font](https://github.com/pixel-font-studio/fusion-bold-pixel-font)
 (Bold) — both OFL-1.1, 12px proportional, release 2026.09.01, verified
 outline-identical to the vendored subsets' sources.

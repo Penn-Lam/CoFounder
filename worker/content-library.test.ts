@@ -18,8 +18,14 @@ describe('Content Library validation', () => {
         expect(
             contentLibraryV1.publicArchetypes.every(
                 ({ story }) =>
+                    story.paragraphs.length >= 4 &&
                     story.image.endsWith('-original.webp') &&
                     story.receiptImage.endsWith('-dot.webp'),
+            ),
+        ).toBe(true);
+        expect(
+            contentLibraryV1.legendaryTraits.every(
+                ({ copy }) => !/[。！？]$/.test(copy),
             ),
         ).toBe(true);
         expect(contentLibraryV1.privateRiskPatterns).toHaveLength(5);

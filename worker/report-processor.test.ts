@@ -98,7 +98,7 @@ describe('private report processor', () => {
         expect(result.report.versions).toEqual({
             questionSet: questionBank.question_set_version,
             rules: 'cofounder-rules-v3',
-            content: 'cofounder-content-v3',
+            content: 'cofounder-content-v4',
         });
         expect(result.report.classification).toMatchObject({
             source: 'conservative',

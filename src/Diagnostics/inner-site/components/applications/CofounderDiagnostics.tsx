@@ -993,18 +993,22 @@ const PairTestFlow: React.FC<{
             return (
                 <article className="private-report" aria-live="polite">
                     {report.portrait.story && (
-                        <figure className="report-story">
-                            <img
-                                src={report.portrait.story.image}
-                                alt={report.portrait.story.title}
-                            />
-                            <figcaption>
-                                <strong>{report.portrait.story.title}</strong>
-                                {report.portrait.story.paragraphs.map((paragraph) => (
-                                    <p key={paragraph}>{paragraph}</p>
+                        <article className="report-story">
+                            <h2>{report.portrait.story.title}</h2>
+                            <div className="report-story-body">
+                                {report.portrait.story.paragraphs.map((paragraph, index) => (
+                                    <React.Fragment key={paragraph}>
+                                        <p>{paragraph}</p>
+                                        {index === 1 && (
+                                            <img
+                                                src={report.portrait.story!.image}
+                                                alt={`${report.portrait.story!.title}创业故事配图`}
+                                            />
+                                        )}
+                                    </React.Fragment>
                                 ))}
-                            </figcaption>
-                        </figure>
+                            </div>
+                        </article>
                     )}
                     <header className="pair-identity">
                         <h1>{report.portrait.title}</h1>
