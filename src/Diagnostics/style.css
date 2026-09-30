@@ -265,17 +265,19 @@
 
 .private-report {
     display: block;
+    padding: clamp(28px, 6vw, 64px);
+    border: 1px solid #aaa79d;
+    background: #fdfcf5;
+    box-shadow: 5px 6px 16px rgba(16, 42, 42, 0.16);
     font-family: Millennium, 'Microsoft YaHei', serif;
 }
 
 .report-story {
     width: min(100%, 760px);
     margin: 0 auto;
-    padding: clamp(24px, 5vw, 48px);
+    padding: 0;
     box-sizing: border-box;
-    border: 1px solid #b9b7ae;
-    background: #ffffff;
-    box-shadow: 0 2px 8px rgba(16, 42, 42, 0.14);
+    background: transparent;
 }
 
 .report-story h2 {
@@ -316,10 +318,15 @@
 }
 
 .pair-identity {
-    padding: clamp(22px, 5vw, 46px);
-    border: 2px solid var(--ink);
-    background: var(--tint-warm);
-    box-shadow: 6px 6px 0 rgba(16, 42, 42, 0.18);
+    width: min(100%, 760px);
+    margin-right: auto;
+    margin-left: auto;
+    padding: clamp(38px, 6vw, 58px) 0 0;
+    box-sizing: border-box;
+    border: 0;
+    border-top: 1px solid #31565a;
+    background: transparent;
+    box-shadow: none;
 }
 
 .pair-identity h1 {
@@ -332,6 +339,11 @@
     margin: 18px 0 12px;
     font-size: clamp(22px, 4vw, 34px);
     line-height: 1.2;
+}
+
+.pair-identity > p:last-of-type {
+    max-width: 680px;
+    line-height: 1.7;
 }
 
 .pair-modifiers,
@@ -354,17 +366,28 @@
 }
 
 .legendary-trait {
+    width: fit-content;
+    max-width: 100%;
     margin-top: 20px;
-    padding: 14px 16px;
-    border: 3px double #7a5a00;
-    background: #fff4bd;
+    padding: 10px 16px;
+    box-sizing: border-box;
+    border: 0;
+    border-left: 4px solid #9a7413;
+    background: rgba(255, 244, 189, 0.36);
 }
 
 .legendary-trait strong {
-    font-size: 23px;
+    font-size: 20px;
+}
+
+.legendary-trait p {
+    margin-top: 5px;
 }
 
 .report-details {
+    width: min(100%, 760px);
+    margin-right: auto;
+    margin-left: auto;
     border-top: 3px double var(--ink);
     border-bottom: 3px double var(--ink);
     padding: 16px 0;
@@ -391,6 +414,10 @@
 
 .private-report > * + * {
     margin-top: 32px;
+}
+
+.private-report > .pair-identity {
+    margin-top: 52px;
 }
 
 .private-report h2 {
@@ -1077,6 +1104,9 @@
 }
 
 .receipt-publish {
+    width: min(100%, 760px);
+    margin-right: auto;
+    margin-left: auto;
     margin-top: 24px;
 }
 
@@ -1953,8 +1983,13 @@
         font-size: 24px;
     }
 
+    .private-report {
+        padding: 24px 16px;
+        box-shadow: none;
+    }
+
     .report-story {
-        padding: 22px 16px;
+        padding: 0;
     }
 
     .report-story h2 {
@@ -1968,8 +2003,8 @@
     }
 
     .pair-identity {
-        padding: 20px 16px;
-        box-shadow: 4px 4px 0 rgba(16, 42, 42, 0.18);
+        padding: 36px 0 0;
+        box-shadow: none;
     }
 
     .pair-identity h2 {
