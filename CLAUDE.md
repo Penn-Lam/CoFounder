@@ -39,4 +39,10 @@ Use `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `won
 
 Use the single-context layout: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
 
+## Cursor Cloud specific instructions
+
+- Use Bun 1.3.10 (`mise exec bun@1.3.10 -- bun …`). Node 24 is the default `node` once mise is activated.
+- `CI=true bun run dev` builds the webpack bundles, applies local D1 migrations, seeds local R2, and serves Wrangler at `http://localhost:8787`. `CI=true` skips the migration confirmation prompt. The garage is `/` and Diagnostics is `/desktop`.
+- `.dev.vars` is created when missing. Its `RESEND_API_KEY` is a local placeholder, so OTP email is not delivered. `GET /api/content-library/v1/review` returns the content library without a session.
+
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
