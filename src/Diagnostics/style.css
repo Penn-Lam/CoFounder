@@ -1640,6 +1640,16 @@
     opacity: 0.62;
 }
 
+.receipt-signature {
+    font-size: 8px !important;
+    opacity: 0.62;
+}
+
+.receipt-signature a {
+    color: inherit;
+    text-decoration: none;
+}
+
 .receipt-printer-paper h1 {
     margin: 7px 0 0;
     font-family: 'Courier New', monospace;

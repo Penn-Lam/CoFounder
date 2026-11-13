@@ -63,6 +63,9 @@ const ReceiptContent: React.FC<{ result: PublicResult; qrCode: string }> = ({
         <p className="receipt-version">
             Q {result.versions.questionSet} · R {result.versions.rules} · C {result.versions.content}
         </p>
+        <p className="receipt-signature">
+            来自 <a href="https://vergego.ai" target="_blank" rel="noopener noreferrer">vergego.ai</a> 的一个小实验
+        </p>
         <div className="receipt-barcode" aria-hidden="true" />
     </>
 );
